@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { getInitials } from '../lib/utils';
 import { RestaurantLogo } from './ui/RestaurantLogo';
+import { useI18n } from '../lib/i18n';
+import { APP_NAME } from '../constants';
 
 interface SidebarProps {
   currentView: string;
@@ -19,20 +21,21 @@ interface SidebarProps {
 export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSettings, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }: SidebarProps) => {
   const { currentUser, logout } = useAuth();
   const { config } = useConfig();
+  const { t } = useI18n();
 
   const navItems = [
-    { id: 'dashboard', label: 'Accueil', icon: Home },
-    { id: 'receptions', label: 'Réception', icon: Package },
-    { id: 'tracabilite', label: 'Traçabilité', icon: Sparkles },
-    { id: 'temperatures', label: 'Températures', icon: Thermometer },
-    { id: 'viandes', label: 'Cuisson Alimentaire', icon: Flame },
-    { id: 'cleaning', label: 'Plan de nettoyage', icon: Sparkles },
-    { id: 'desserts', label: 'Étiquettes DLC', icon: Tag },
-    { id: 'prep', label: 'Préparations', icon: ChefHat },
-    { id: 'oil', label: 'Huiles', icon: Droplet },
-    { id: 'inventaire', label: 'Inventaire', icon: ClipboardList },
-    { id: 'sessions-mobiles', label: 'Sessions Mobiles', icon: Smartphone },
-    ...(currentUser?.role !== 'Invité' ? [{ id: 'products', label: 'Catalogue', icon: Archive }] : []),
+    { id: 'dashboard', label: t('nav_dashboard'), icon: Home },
+    { id: 'receptions', label: t('nav_receptions'), icon: Package },
+    { id: 'tracabilite', label: t('nav_tracabilite'), icon: Sparkles },
+    { id: 'temperatures', label: t('nav_temperatures'), icon: Thermometer },
+    { id: 'viandes', label: t('nav_viandes'), icon: Flame },
+    { id: 'cleaning', label: t('nav_cleaning'), icon: Sparkles },
+    { id: 'desserts', label: t('nav_desserts'), icon: Tag },
+    { id: 'prep', label: t('nav_prep'), icon: ChefHat },
+    { id: 'oil', label: t('nav_oil'), icon: Droplet },
+    { id: 'inventaire', label: t('nav_inventaire'), icon: ClipboardList },
+    { id: 'sessions-mobiles', label: t('nav_mobile_sessions'), icon: Smartphone },
+    ...(currentUser?.role !== 'Invité' ? [{ id: 'products', label: t('nav_products'), icon: Archive }] : []),
   ];
 
   return (
@@ -103,18 +106,18 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
           {currentView === 'dashboard' && (
             <button 
               onClick={() => setShowSettings(!showSettings)}
-              title={isCollapsed && !isMobileOpen ? "Mon Profil" : undefined}
+              title={isCollapsed && !isMobileOpen ? (currentUser?.role === 'manager' ? t('settings_title') : t('nav_profile')) : undefined}
               className={`flex items-center gap-2 py-2 text-sm font-bold text-gray-500 hover:bg-gray-50 rounded-xl transition-colors ${isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-4'}`}
             >
-              <Settings size={16} className="shrink-0" /> {(!isCollapsed || isMobileOpen) && (currentUser?.role === 'manager' ? "Paramètres" : "Mon Profil")}
+              <Settings size={16} className="shrink-0" /> {(!isCollapsed || isMobileOpen) && (currentUser?.role === 'manager' ? t('settings_title') : t('nav_profile'))}
             </button>
           )}
           <button 
             onClick={logout}
-            title={isCollapsed && !isMobileOpen ? "Déconnexion" : undefined}
+            title={isCollapsed && !isMobileOpen ? t('nav_logout') : undefined}
             className={`flex items-center gap-2 py-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors ${isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-4'}`}
           >
-            <LogOut size={16} className="shrink-0" /> {(!isCollapsed || isMobileOpen) && "Me déconnecter"}
+            <LogOut size={16} className="shrink-0" /> {(!isCollapsed || isMobileOpen) && t('nav_logout')}
           </button>
 
           <button 
@@ -123,6 +126,12 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
           >
             {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
+          
+          {(!isCollapsed || isMobileOpen) && (
+            <div className="mt-2 text-center">
+              <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">{APP_NAME}</span>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -1,7 +1,7 @@
 {
-  "name": "Crousty Hub",
-  "short_name": "Crousty",
-  "description": "Application de gestion Crousty",
+  "name": "Hartmann Hub",
+  "short_name": "Hartmann",
+  "description": "Application de gestion Hartmann Hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

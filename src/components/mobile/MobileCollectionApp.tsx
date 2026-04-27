@@ -11,6 +11,7 @@ import Tracabilite from '../../modules/Tracabilite';
 import Receptions from '../../modules/Receptions';
 import CleaningPlan from '../../modules/CleaningPlan';
 import OilChecklist from '../../modules/OilChecklist';
+import { useI18n } from '../../lib/i18n';
 
 import { RestaurantLogo } from '../ui/RestaurantLogo';
 
@@ -28,6 +29,7 @@ const MODULE_CONFIG: Record<string, any> = {
 
 export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit: () => void }) => {
   const { config } = useConfig();
+  const { t, language } = useI18n();
   const identity = config.restaurant || session.identity || { nom: session.resto };
   
   const [currentView, setCurrentView] = useState<string>(() => {
@@ -236,8 +238,8 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
      return (
        <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
          <div className="w-12 h-12 border-4 border-crousty-purple border-t-transparent rounded-full animate-spin mb-6"></div>
-         <h2 className="text-xl font-black text-gray-800">Synchronisation en cours</h2>
-         <p className="text-gray-500 mt-2">Récupération des configurations de l'iPad...</p>
+         <h2 className="text-xl font-black text-gray-800">{t('mobile_app_syncing')}</h2>
+         <p className="text-gray-500 mt-2">{t('mobile_app_sync_desc')}</p>
        </div>
      );
   }
@@ -252,7 +254,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
            {identity.nom}
          </h1>
          <p className="text-gray-500 mb-8 max-w-sm">
-           {identity.ville ? `${identity.ville} • ` : ''}Saisissez votre prénom et nom. Ils seront associés à toutes vos saisies effectuées depuis ce téléphone.
+           {identity.ville ? `${identity.ville} • ` : ''}{t('mobile_app_setup_desc')}
          </p>
          
          <form onSubmit={handleStartSession} className="w-full max-w-sm space-y-4">
@@ -265,10 +267,10 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
               className="w-full px-6 py-4 text-lg font-bold text-center border-2 border-purple-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-crousty-purple/20 focus:border-crousty-purple bg-white shadow-sm"
             />
             <Button type="submit" disabled={!workerName.trim()} className="w-full h-14 text-lg">
-               Commencer la saisie
+               {t('mobile_app_start_btn')}
             </Button>
             <Button variant="secondary" onClick={handleExit} type="button" className="w-full text-red-500">
-               Annuler et Quitter
+               {t('mobile_app_exit_btn')}
             </Button>
          </form>
        </div>
@@ -284,7 +286,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
         <div className="h-[100dvh] flex flex-col bg-slate-50 relative pb-[safe-area-inset-bottom]">
            <header className="bg-white border-b border-gray-100 p-4 pt-safe flex items-center justify-between shrink-0 shadow-sm sticky top-0 z-50">
              <button onClick={() => setCurrentView('dashboard')} className="flex items-center gap-2 text-gray-500 font-bold active:bg-gray-100 p-2 rounded-xl -ml-2 transition-colors">
-                <ChevronLeft size={24} /> Retour
+                <ChevronLeft size={24} /> {t('btn_back')}
              </button>
              <span className="font-black text-gray-800 uppercase tracking-widest truncate">
                {modConfig.name}
@@ -308,7 +310,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
            <RestaurantLogo size="md" />
            <div>
              <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-crousty-purple rounded-full text-[10px] font-black uppercase tracking-wider mb-2">
-               <Smartphone size={12} /> Mode Collecte
+               <Smartphone size={12} /> {t('mobile_app_mode')}
              </div>
              <h1 className="text-2xl font-black text-gray-800 tracking-tight leading-tight">{session.name || "Session Terrain"}</h1>
              <p className="text-gray-500 text-sm mt-1">{identity.nom}</p>
@@ -320,7 +322,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
        </header>
 
        <div className="space-y-4 mb-8 flex-1">
-         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest px-1">Modules autorisés</h2>
+         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest px-1">{t('mobile_app_allowed_modules')}</h2>
          
          {session.m.map((mod: string) => {
            const conf = MODULE_CONFIG[mod];
@@ -339,7 +341,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
                  </div>
                  <div className="min-w-0 flex-1">
                    <h3 className="font-black text-gray-800 text-lg truncate leading-tight mb-0.5">{conf.name}</h3>
-                   <p className="text-gray-400 text-sm font-bold truncate">{counts[mod] || 0} saisie(s) enregistrée(s)</p>
+                   <p className="text-gray-400 text-sm font-bold truncate">{t('mobile_app_elements_count', { count: counts[mod] || 0 })}</p>
                  </div>
                </div>
                <ChevronLeft className="text-gray-300 rotate-180 shrink-0 ml-2" />
@@ -351,8 +353,8 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
        <div className="bg-white p-6 rounded-3xl shadow-xl shadow-crousty-purple/5 border border-purple-50">
           <div className="flex items-end justify-between mb-6">
             <div>
-              <h3 className="font-black text-gray-800 text-lg">Prêt à exporter</h3>
-              <p className="text-gray-400 text-sm">{totalEntries} élément(s) saisi(s)</p>
+              <h3 className="font-black text-gray-800 text-lg">{t('mobile_app_ready_export')}</h3>
+              <p className="text-gray-400 text-sm">{t('mobile_app_elements_count', { count: totalEntries })}</p>
             </div>
             <div className="text-3xl font-black text-crousty-purple">{totalEntries}</div>
           </div>
@@ -360,23 +362,23 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
           {exportDone ? (
              <div className="flex flex-col gap-3">
                <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 font-bold mb-2">
-                 <CheckCircle2 className="text-green-500" /> Envoyé avec succès vers l'iPad
+                 <CheckCircle2 className="text-green-500" /> {t('mobile_app_sent_success')}
                </div>
                <Button onClick={handleExport} variant="secondary" className="w-full">
-                 <Upload size={18} /> Renvoyer vers l'iPad
+                 <Upload size={18} /> {t('mobile_app_resend')}
                </Button>
                <button onClick={forceDownload} className="text-sm font-bold text-gray-500 hover:text-crousty-purple py-2 underline underline-offset-4 active:scale-95 transition-transform">
-                 Au cas où: Télécharger manuellement (ZIP)
+                 {t('mobile_app_manual_download')}
                </button>
                <Button onClick={clearLocalData} className="w-full bg-red-50 text-red-600 hover:bg-red-100 mt-2 border-none">
-                 <Trash2 size={18} /> Vider l'appareil
+                 <Trash2 size={18} /> {t('mobile_app_clear_device')}
                </Button>
              </div>
           ) : (
              <Button onClick={handleExport} disabled={totalEntries === 0 || isExporting} className="w-full h-14 text-lg animate-pulse-light shadow-lg shadow-crousty-purple/30">
-               {isExporting ? 'Envoi en cours...' : (
+               {isExporting ? t('mobile_app_sending') : (
                  <>
-                   <Upload size={20} /> Envoyer vers l'iPad
+                   <Upload size={20} /> {t('mobile_app_send_btn')}
                  </>
                )}
              </Button>

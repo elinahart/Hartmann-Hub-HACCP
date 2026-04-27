@@ -3,13 +3,14 @@ import * as LucideIcons from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { getInitials } from '../../lib/utils';
 import { cn } from '../../lib/utils';
+import { APP_NAME } from '../../constants';
 
 interface RestaurantLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
   interactive?: boolean;
-  onClick?: (part: 'logo' | 'text') => void;
+  onClick?: (part: 'logo' | 'text' | 'monogram' | 'icon') => void;
 }
 
 export const RestaurantLogo = ({ className, size = 'md', showText = false, interactive = false, onClick }: RestaurantLogoProps) => {
@@ -34,29 +35,38 @@ export const RestaurantLogo = ({ className, size = 'md', showText = false, inter
     xl: 48,
   };
 
-  const initials = identity.logoText || getInitials(identity.nom || 'Crousty Hub');
-  const fullText = identity.logoText || identity.nom || 'Crousty Hub';
+  const initials = identity.logoText || getInitials(identity.nom || APP_NAME);
+  const fullText = identity.logoText || identity.nom || APP_NAME;
 
   const renderLogoContent = () => {
+    const handleInnerClick = (e: React.MouseEvent, part: 'monogram' | 'icon') => {
+      if (interactive && onClick) {
+        e.stopPropagation();
+        onClick(part);
+      }
+    };
+
     switch (identity.logoMode) {
       case 'text':
-        return <span className="font-black uppercase tracking-tighter whitespace-nowrap">{fullText.slice(0, 10)}</span>;
+        return <span onClick={(e) => handleInnerClick(e, 'monogram')} className="font-black uppercase tracking-tighter whitespace-nowrap hover:scale-110 transition-transform">{fullText.slice(0, 10)}</span>;
       case 'initials':
-        return <span className="font-black uppercase">{initials.slice(0, 2)}</span>;
+        return <span onClick={(e) => handleInnerClick(e, 'monogram')} className="font-black uppercase hover:scale-110 transition-transform">{initials.slice(0, 2)}</span>;
       case 'icon':
-        return <IconComponent size={iconSizes[size]} />;
+        return <div onClick={(e) => handleInnerClick(e, 'icon')} className="hover:scale-110 transition-transform"><IconComponent size={iconSizes[size]} /></div>;
       case 'icon+text':
       case 'icon+initials':
         return (
           <div className="flex items-center gap-1">
-            <IconComponent size={iconSizes[size] * 0.8} />
-            <span className="font-black uppercase text-[0.7em]">
+            <div onClick={(e) => handleInnerClick(e, 'icon')} className="hover:scale-110 transition-transform">
+              <IconComponent size={iconSizes[size] * 0.8} />
+            </div>
+            <span onClick={(e) => handleInnerClick(e, 'monogram')} className="font-black uppercase text-[0.7em] hover:scale-110 transition-transform">
               {identity.logoMode === 'icon+text' ? initials : initials.slice(0, 2)}
             </span>
           </div>
         );
       default:
-        return <span className="font-black uppercase">{initials.slice(0, 2)}</span>;
+        return <span onClick={(e) => handleInnerClick(e, 'monogram')} className="font-black uppercase hover:scale-110 transition-transform">{initials.slice(0, 2)}</span>;
     }
   };
 

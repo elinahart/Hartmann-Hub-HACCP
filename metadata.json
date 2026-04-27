@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Crousty Hub - Gestion HACCP & Mobile",
-  "description": "Application web complète de gestion HACCP avec tour de contrôle pour sessions mobiles, collectes terrain et export PDF.",
+  "name": "Hartmann Hub - Gestion HACCP & Mobile",
+  "description": "Application web complète de gestion HACCP Hartmann Hub avec tour de contrôle pour sessions mobiles, collectes terrain et export PDF.",
   "requestFramePermissions": [
     "camera"
   ],

@@ -6,6 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import JSZip from 'jszip';
 import { getStoredData, setStoredData, savePhotoBase64 } from '../../lib/db';
 import { useAuth } from '../../contexts/AuthContext';
+import { useI18n } from '../../lib/i18n';
 
 interface MobileSyncModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const MOBILE_PROFILES = [
 
 export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
   const { currentUser } = useAuth();
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<'sessions' | 'new' | 'manual'>('sessions');
   
   const [sessions, setSessions] = useState<ServerSession[]>([]);
@@ -328,19 +330,19 @@ export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
             className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'sessions' ? 'text-crousty-purple border-b-2 border-crousty-purple bg-white' : 'text-gray-500 hover:bg-blue-50/50'}`}
             onClick={() => { setActiveTab('sessions'); setImportStatus('idle'); }}
           >
-            Sessions actives
+            {t('mobile_sync_active')}
           </button>
           <button 
             className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'new' ? 'text-crousty-purple border-b-2 border-crousty-purple bg-white' : 'text-gray-500 hover:bg-blue-50/50'}`}
             onClick={() => { setActiveTab('new'); setSessionUrl(''); setSelectedSessionSid(null); setImportStatus('idle'); }}
           >
-            Créer une session
+            {t('mobile_sync_create')}
           </button>
           <button 
             className={`px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'manual' ? 'text-crousty-purple border-b-2 border-crousty-purple bg-white' : 'text-gray-500 hover:bg-blue-50/50'}`}
             onClick={() => setActiveTab('manual')}
           >
-            Import Manuel
+            {t('mobile_sync_manual')}
           </button>
         </div>
 
@@ -356,7 +358,7 @@ export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
                 
                 {sessions.length === 0 ? (
                   <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                    Aucune session active.
+                    {t('mobile_sync_none')}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -365,9 +367,9 @@ export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
                         <div className="flex-1 w-full text-left">
                            <div className="font-bold flex items-center gap-2">
                              {s.name}
-                             {s.status === 'imported' && <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Importé</span>}
-                             {s.status === 'uploaded' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold animate-pulse">Archive reçue</span>}
-                             {s.status === 'waiting' && <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">En attente</span>}
+                             {s.status === 'imported' && <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">{t('mobile_sync_imported')}</span>}
+                             {s.status === 'uploaded' && <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold animate-pulse">{t('mobile_sync_uploaded')}</span>}
+                             {s.status === 'waiting' && <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">{t('mobile_sync_waiting')}</span>}
                            </div>
                            <div className="text-xs text-gray-500 mt-1">
                              Créée à {new Date(s.timestamp).toLocaleTimeString()} - Modules : {s.modules.join(', ')}
@@ -381,17 +383,17 @@ export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
                           )}
                           {(s.status === 'uploaded' || s.status === 'imported') && (
                             <Button onClick={() => downloadAndProcessSession(s.sid)} className="text-xs px-3 bg-crousty-purple hover:bg-crousty-purple/90">
-                              <Eye size={14} className="mr-1 inline-block" /> Prévisualiser
+                              <Eye size={14} className="mr-1 inline-block" /> {t('mobile_sync_preview')}
                             </Button>
                           )}
                           {sessionToDelete === s.sid ? (
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-medium text-red-600">Supprimer ?</span>
                               <Button variant="danger" onClick={(e) => { e.stopPropagation(); confirmDeleteSession(s.sid); }} className="text-xs px-2 h-8 bg-red-600 hover:bg-red-700 text-white">Oui</Button>
-                              <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSessionToDelete(null); }} className="text-xs px-2 h-8">Non</Button>
+                              <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSessionToDelete(null); }} className="text-xs px-2 h-8">{t('btn_cancel')}</Button>
                             </div>
                           ) : (
-                            <button onClick={(e) => { e.stopPropagation(); deleteSession(s.sid); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0" title="Supprimer la session">
+                            <button onClick={(e) => { e.stopPropagation(); deleteSession(s.sid); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0" title={t('mobile_sync_delete')}>
                               <Trash2 size={16} />
                             </button>
                           )}

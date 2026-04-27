@@ -38,6 +38,8 @@ import { MobileSyncModal } from './components/mobile/MobileSyncModal';
 import { usePersistentStorage } from './hooks/usePersistentStorage';
 import { ManagerUIProvider } from './contexts/ManagerUIContext';
 
+import { useI18n } from './lib/i18n';
+
 type View = 'dashboard' | 'receptions' | 'tracabilite' | 'prep' | 'temperatures' | 'desserts' | 'oil' | 'cleaning' | 'products' | 'viandes' | 'inventaire' | 'sessions-mobiles';
 
 const Tile = ({ icon: Icon, title, badge, alert, status, statusColor = 'gray', onClick }: { icon: any, title: string, badge?: number, alert?: boolean, status?: React.ReactNode, statusColor?: string, onClick: () => void }) => {
@@ -78,6 +80,7 @@ const Tile = ({ icon: Icon, title, badge, alert, status, statusColor = 'gray', o
 export default function App() {
   const { currentUser, logout } = useAuth();
   const { isPersistent, estimate } = usePersistentStorage();
+  const { t, language } = useI18n();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [showSettings, setShowSettings] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
@@ -173,10 +176,10 @@ export default function App() {
     if (!dateStr) return '-';
     const diffMs = new Date().getTime() - new Date(dateStr).getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return `Il y a ${diffMins} min`;
+    if (diffMins < 60) return t('time_ago_mins', { mins: diffMins });
     const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `Il y a ${diffHrs}h`;
-    return 'Plus de 24h';
+    if (diffHrs < 24) return t('time_ago_hrs', { hrs: diffHrs });
+    return t('time_ago_dayplus');
   };
 
   const [dashboardStats, setDashboardStats] = useState<any>({});
@@ -364,17 +367,17 @@ export default function App() {
 
   const getViewTitle = (view: View) => {
     switch(view) {
-      case 'receptions': return 'Réception';
-      case 'tracabilite': return 'Traçabilité';
-      case 'prep': return 'Préparations';
-      case 'temperatures': return 'Températures';
-      case 'viandes': return 'Cuisson Alimentaire';
-      case 'oil': return 'Huiles de Friture';
-      case 'cleaning': return 'Plan de Nettoyage';
-      case 'desserts': return 'Étiquettes DLC';
-      case 'products': return 'Catalogue Produits';
-      case 'inventaire': return 'Inventaire';
-      case 'sessions-mobiles': return 'Sessions Mobiles';
+      case 'receptions': return t('nav_receptions');
+      case 'tracabilite': return t('nav_tracabilite');
+      case 'prep': return t('nav_prep');
+      case 'temperatures': return t('nav_temperatures');
+      case 'viandes': return t('nav_viandes');
+      case 'oil': return t('nav_oil');
+      case 'cleaning': return t('nav_cleaning');
+      case 'desserts': return t('nav_desserts');
+      case 'products': return t('nav_products');
+      case 'inventaire': return t('nav_inventaire');
+      case 'sessions-mobiles': return t('nav_mobile_sessions');
       default: return '';
     }
   };
@@ -412,10 +415,10 @@ export default function App() {
                   <RestaurantLogo size="sm" className="hidden md:flex" />
                   <div className="flex items-center gap-2 min-w-0">
                     <h1 className="text-3xl font-black text-gray-800 tracking-tight truncate">
-                      {new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'} {currentUser?.name}
+                      {new Date().getHours() >= 18 ? t('dashboard_good_evening') : t('dashboard_good_morning')} {currentUser?.name}
                     </h1>
                     {currentUser?.role === 'manager' && (
-                      <span className="py-1 px-3 bg-[var(--color-primary)] text-white text-[10px] font-black rounded-lg uppercase tracking-wider shrink-0 shadow-sm">MANAGER</span>
+                      <span className="py-1 px-3 bg-[var(--color-primary)] text-white text-[10px] font-black rounded-lg uppercase tracking-wider shrink-0 shadow-sm">{t('role_manager')}</span>
                     )}
                   </div>
                 </div>
@@ -425,23 +428,25 @@ export default function App() {
                   <button 
                     onClick={() => setCurrentView('sessions-mobiles')}
                     className="h-10 px-3 flex items-center justify-center bg-purple-50 border border-purple-100 rounded-xl text-crousty-purple hover:bg-purple-100 transition-colors shadow-sm active:scale-95 gap-2"
-                    title="Sessions Mobiles"
+                    title={t('nav_mobile_sessions')}
                   >
                     <Smartphone size={20} />
-                    <span className="font-bold text-sm hidden sm:block">Mobile</span>
+                    <span className="font-bold text-sm hidden sm:block">{t('dashboard_mobile_btn')}</span>
                   </button>
                   <button 
                     onClick={() => setIsExportModalOpen(true)}
                     className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-[var(--color-secondary)] transition-colors shadow-sm active:scale-95"
-                    title="Télécharger ZIP"
+                    title={t('dashboard_download_zip')}
                   >
                     <Download size={20} />
                   </button>
                 </div>
               </div>
-              <p className="text-[var(--color-secondary)] font-bold text-base capitalize mt-2 px-1">
-                {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
-              </p>
+              <div className="max-w-4xl mx-auto overflow-hidden">
+                <p className="text-[var(--color-secondary)] font-bold text-base capitalize mt-2 px-1">
+                  {format(new Date(), 'EEEE d MMMM yyyy', { locale: language === 'fr' ? fr : undefined })}
+                </p>
+              </div>
             </div>
           </header>
 
@@ -461,16 +466,16 @@ export default function App() {
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-2xl font-black text-gray-800 tracking-tighter">{dailyProgress}%</span>
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mt-1">Journée</span>
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mt-1">{t('dashboard_day_progress')}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 flex-1">
                   <div className="bg-green-50 rounded-xl p-3 border border-green-100">
-                    <span className="text-[10px] text-green-600 font-bold uppercase block mb-0.5">Tâches planifiées</span>
+                    <span className="text-[10px] text-green-600 font-bold uppercase block mb-0.5">{t('dashboard_tasks_planned')}</span>
                     <span className="text-lg font-black text-green-700">{kpiData.tasksDone} <span className="text-xs font-medium text-green-600/60">/ 5</span></span>
                   </div>
                   <div className="bg-orange-50 rounded-xl p-3 border border-orange-100">
-                    <span className="text-[10px] text-orange-600 font-bold uppercase block mb-0.5">Tâches restantes</span>
+                    <span className="text-[10px] text-orange-600 font-bold uppercase block mb-0.5">{t('dashboard_tasks_remaining')}</span>
                     <span className="text-lg font-black text-orange-700">{kpiData.tasksRemaining}</span>
                   </div>
                 </div>
@@ -478,11 +483,11 @@ export default function App() {
 
              <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-gray-50 flex flex-col justify-between md:w-1/2 gap-4">
                <div>
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Dernière action</h3>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t('dashboard_last_action')}</h3>
                   <div className="font-black text-xl text-gray-800">{kpiData.lastAction}</div>
                </div>
                <div>
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Dernier relevé Froid</h3>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t('dashboard_last_temp')}</h3>
                   <div className="font-black text-xl text-crousty-purple">{kpiData.lastTemp}</div>
                </div>
              </div>
@@ -492,44 +497,44 @@ export default function App() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
             <Tile 
               icon={Package} 
-              title="Réception" 
-              status={`${dashboardStats?.receptions || 0} lot(s)`} 
+              title={t('nav_receptions')} 
+              status={t('dashboard_lots_count', { count: dashboardStats?.receptions || 0 })} 
               statusColor={dashboardStats?.receptions > 0 ? 'green' : 'gray'}
               onClick={() => setCurrentView('receptions')} 
             />
             <Tile 
               icon={Sparkles} 
-              title="Traçabilité" 
-              status={`${dashboardStats?.traca || 0} ouv.`} 
+              title={t('nav_tracabilite')} 
+              status={t('dashboard_openings_count', { count: dashboardStats?.traca || 0 })} 
               statusColor={dashboardStats?.traca > 0 ? 'purple' : 'gray'}
               onClick={() => setCurrentView('tracabilite')} 
             />
             <Tile 
               icon={Thermometer} 
-              title="Températures" 
+              title={t('nav_temperatures')} 
               alert={alerts.temps} 
-              status={dashboardStats?.tempsDone ? 'À jour' : 'En attente'}
+              status={dashboardStats?.tempsDone ? t('status_up_to_date') : t('status_pending')}
               statusColor={dashboardStats?.tempsDone ? 'green' : 'red'}
               onClick={() => setCurrentView('temperatures')} 
             />
             <Tile 
               icon={Flame} 
-              title="Cuisson Alim." 
-              status={`${dashboardStats?.viandes || 0} relevé(s)`}
+              title={t('nav_viandes')} 
+              status={t('dashboard_readings_count', { count: dashboardStats?.viandes || 0 })}
               statusColor={dashboardStats?.viandes > 0 ? 'orange' : 'gray'}
               onClick={() => setCurrentView('viandes')} 
             />
             <Tile 
               icon={Sparkles} 
-              title="Nettoyage" 
+              title={t('nav_cleaning')} 
               alert={alerts.cleaning} 
-              status={`${dashboardStats?.cleaningTasks || 0} tâche(s)`}
+              status={t('dashboard_tasks_count', { count: dashboardStats?.cleaningTasks || 0 })}
               statusColor={dashboardStats?.cleaningTasks > 0 ? 'green' : 'orange'}
               onClick={() => setCurrentView('cleaning')} 
             />
             <Tile 
               icon={Tag} 
-              title="Étiquettes DLC" 
+              title={t('nav_desserts')} 
               badge={alerts.dlcCount > 0 ? alerts.dlcCount : undefined} 
               alert={alerts.dlcCount > 0} 
               status={`${dashboardStats?.dlcActive || 0} act. / ${dashboardStats?.dlcExpired || 0} exp.`}
@@ -538,29 +543,29 @@ export default function App() {
             />
             <Tile 
               icon={ChefHat} 
-              title="Préparations" 
-              status={`${dashboardStats?.preps || 0} bac(s)`}
+              title={t('nav_prep')} 
+              status={t('dashboard_bins_count', { count: dashboardStats?.preps || 0 })}
               statusColor={dashboardStats?.preps > 0 ? 'green' : 'gray'}
               onClick={() => setCurrentView('prep')} 
             />
             <Tile 
               icon={Droplet} 
-              title="Huiles" 
+              title={t('nav_oil')} 
               alert={alerts.oil} 
-              status={dashboardStats?.oilDone ? 'Fait' : 'À faire'}
+              status={dashboardStats?.oilDone ? t('status_done') : t('status_to_do')}
               statusColor={dashboardStats?.oilDone ? 'green' : 'orange'}
               onClick={() => setCurrentView('oil')} 
             />
             <Tile 
               icon={ClipboardList} 
-              title="Inventaire" 
-              status="Gérer"
+              title={t('nav_inventaire')} 
+              status={t('btn_manage')}
               onClick={() => setCurrentView('inventaire')} 
             />
             <Tile 
               icon={Archive} 
-              title="Produits" 
-              status={`${dashboardStats?.products || 0} prd.`}
+              title={t('nav_products')} 
+              status={t('dashboard_products_count', { count: dashboardStats?.products || 0 })}
               onClick={() => setCurrentView('products')} 
             />
           </div>
@@ -604,7 +609,7 @@ export default function App() {
           <div className="bg-red-50 border-b border-red-200 p-3 px-4 flex items-start gap-3">
             <span className="text-xl leading-none">⚠️</span>
             <div className="text-sm font-bold text-red-700 leading-tight mt-0.5">
-              Vos données pourraient être supprimées par iOS. Pensez à exporter régulièrement votre PDF HACCP.
+              {t('warning_ios_storage')}
             </div>
           </div>
         )}
@@ -612,7 +617,7 @@ export default function App() {
           <div className="bg-orange-50 border-b border-orange-200 p-3 px-4 flex items-start gap-3">
             <span className="text-xl leading-none">⚠️</span>
             <div className="text-sm font-bold text-orange-700 leading-tight mt-0.5">
-              Stockage presque plein. Effectuez un archivage mensuel pour libérer de l'espace.
+              {t('warning_storage_full')}
             </div>
           </div>
         )}
@@ -631,12 +636,12 @@ export default function App() {
             </button>
             <span className="font-black text-gray-800 uppercase tracking-widest text-lg truncate">{getViewTitle(currentView)}</span>
             {currentUser?.role === 'manager' && (
-               <span className="badge-manager hidden sm:inline-flex">MANAGER</span>
+               <span className="badge-manager hidden sm:inline-flex">{t('role_manager')}</span>
             )}
           </div>
           <div className="header-actions">
             {currentUser?.role === 'manager' && (
-               <span className="badge-manager sm:hidden">MANAGER</span>
+               <span className="badge-manager sm:hidden">{t('role_manager')}</span>
             )}
             <UserMenu />
           </div>

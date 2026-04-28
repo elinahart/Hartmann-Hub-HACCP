@@ -570,7 +570,9 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
                            const estimated = smartEstimations[p.name];
                            if (estimated !== undefined && newQuantities[p.category]?.[p.name] === undefined) {
                              if (!newQuantities[p.category]) newQuantities[p.category] = {};
-                             newQuantities[p.category][p.name] = { units: String(estimated), cartons: '0', na: false };
+                             const cartons = Math.floor(estimated / 5);
+                             const units = estimated % 5;
+                             newQuantities[p.category][p.name] = { units: String(units), cartons: String(cartons), na: false };
                              changed = true;
                            }
                          });

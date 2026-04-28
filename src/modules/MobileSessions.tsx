@@ -126,11 +126,9 @@ export const MobileSessions = () => {
 
   const handleDeleteSession = async (sid: string) => {
     try {
-      const response = await fetch(`/api/sessions/${sid}`, {
+      fetch(`/api/sessions/${sid}`, {
         method: 'DELETE'
-      });
-
-      if (!response.ok) throw new Error("Erreur lors de la suppression");
+      }).catch(() => console.warn("Serveur injoignable, suppression locale uniquement"));
 
       const updated = sessions.filter(s => s.id !== sid);
       setSessions(updated);
@@ -195,6 +193,7 @@ export const MobileSessions = () => {
       nettoyageTaches: getStoredData('crousty-nettoyage-taches', []),
     };
 
+    try {
       try {
         await fetch(`/api/sessions/${newSid}`, {
           method: 'POST',
@@ -209,11 +208,16 @@ export const MobileSessions = () => {
               assignedToName: assignedName
             }
           })
-        });
-  
-        const updated = [newSession, ...(sessions || [])];
-        setSessions(updated);
-        setStoredData('crousty_mobile_sessions', updated);
+        }).then(res => {
+          if (!res.ok && res.status !== 404 && !res.headers.get('content-type')?.includes('text/html')) {
+             console.warn('Backend responded with config error (ignored on static deploy)');
+          }
+        }).catch(() => console.warn('No backend for session sync (Netlify static)'));
+      } catch (e) {}
+
+      const updated = [newSession, ...(sessions || [])];
+      setSessions(updated);
+      setStoredData('crousty_mobile_sessions', updated);
       
       logAuditEvent({
         type: 'create',

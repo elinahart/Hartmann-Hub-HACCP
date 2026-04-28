@@ -178,14 +178,14 @@ export default function InventaireIntelligent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
             {filteredStats.map((s, idx) => {
               const p = s.product;
               return (
                 <div 
                   key={idx} 
                   onClick={() => setSelectedProductStat(s)}
-                  className={`p-3 rounded-2xl border-2 transition-transform cursor-pointer hover:scale-[1.02] bg-white relative overflow-hidden ${s.isRisk ? 'border-red-500 shadow-sm shadow-red-100' : 'border-gray-100 shadow-sm hover:border-crousty-purple/30'}`}
+                  className={`p-2 rounded-xl border transition-transform cursor-pointer hover:scale-[1.02] bg-white relative overflow-hidden ${s.isRisk ? 'border-red-300 shadow-sm shadow-red-100' : 'border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-crousty-purple/30'}`}
                 >
                   {s.isRisk && (
                     <div className="absolute top-0 right-0 py-0.5 flex items-center justify-center w-24 bg-red-500 text-white text-[8px] uppercase font-black tracking-widest rotate-45 translate-x-8 translate-y-2 shadow-md z-10">
@@ -193,32 +193,25 @@ export default function InventaireIntelligent() {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mb-3 pr-4">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                       <div className="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 shrink-0">
-                          <Package size={16} className="text-gray-400" />
-                       </div>
-                       <div className="truncate">
-                          <h4 className="font-black text-sm text-gray-800 truncate leading-tight">{p.name}</h4>
-                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{p.category}</span>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-end justify-between">
-                     <div>
-                        <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Stock</div>
-                        <div className="font-black text-gray-800 text-base">{s.stockNewer} <span className="text-[10px] text-gray-400 font-medium">u.</span></div>
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3 overflow-hidden">
+                        <div className={`w-8 h-8 rounded border flex items-center justify-center shrink-0 ${s.isRisk ? 'bg-red-50 border-red-100 text-red-500' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                           <Package size={14} />
+                        </div>
+                        <div className="truncate">
+                           <h4 className="font-black text-sm text-gray-800 truncate leading-none mb-1">{p.name}</h4>
+                           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                               <span>P: {s.stockOlder}</span>
+                               <span>A: <span className="text-crousty-purple">{s.stockNewer}</span></span>
+                           </div>
+                        </div>
                      </div>
-                     <div className="text-right">
+                     <div className="text-right shrink-0">
                         {s.daysUntilEmpty > 90 ? (
-                           <span className="text-emerald-500 font-black text-[10px] uppercase tracking-wider block">Sécurisé</span>
+                           <span className="text-emerald-500 font-black text-[10px] uppercase tracking-wider">Sécurisé</span>
                         ) : (
-                           <div>
-                              <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Rupture dans</div>
-                              <span className={`font-black tracking-wider uppercase text-[10px] ${s.isRisk ? 'text-red-600' : 'text-orange-600'}`}>
-                                 {s.daysUntilEmpty.toFixed(0)} j.
-                              </span>
+                           <div className={`font-black uppercase text-[10px] px-2 py-1 rounded border ${s.isRisk ? 'bg-red-50 text-red-600 border-red-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
+                              {s.daysUntilEmpty.toFixed(0)} j
                            </div>
                         )}
                      </div>

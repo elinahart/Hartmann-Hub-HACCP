@@ -55,6 +55,10 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
         
         fetch(`/api/sessions/${session.sid}/config`)
           .then(async res => {
+             const isHtml = res.headers.get('content-type')?.includes('text/html');
+             if (res.status === 404 || isHtml) {
+                throw new Error("API_OFFLINE"); // Netlify environment or backend not available
+             }
              if (res.status === 403) {
                 throw new Error("ACCÈS REFUSÉ (403) : Cette URL est protégée. Vérifiez que vous n'utilisez pas l'URL de TEST au lieu de l'URL PUBLIQUE.");
              }
@@ -88,6 +92,14 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
              }
           })
           .catch((err) => {
+             if (err.message === "API_OFFLINE" || String(err).includes("Unexpected token")) {
+                // Backend not available (Netlify), skip config sync completely
+                console.warn('Backend unavailable (Netlify mode), skipping config sync.');
+                localStorage.setItem(`crousty_mobile_config_synced_${session.sid}`, 'true');
+                setConfigSynced(true);
+                setSyncingConfig(false);
+                return;
+             }
              console.error('Erreur de synchronisation:', err);
              setSyncError(err.message || 'Erreur inconnue');
              setSyncingConfig(false);
@@ -193,6 +205,8 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
          body: formData,
        });
 
+       const isHtml = response.headers.get('content-type')?.includes('text/html');
+       if (response.status === 404 || isHtml) throw new Error("API_OFFLINE");
        if (!response.ok) throw new Error(`Erreur serveur (${response.status})`);
        
        const result = await response.json();
@@ -207,7 +221,11 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
        onExit();
        
     } catch (err: any) {
-       alert("Erreur lors de l'export: " + err.message);
+       if (err.message === "API_OFFLINE" || String(err).includes("Unexpected token")) {
+           alert("Attention : Le serveur dynamique est désactivé sur cet environnement (ex: Netlify).\n\nVeuillez utiliser le bouton 'Télécharger manuellement (ZIP)' puis envoyer le fichier au Hub (iPad) via Airdrop, Email, etc.");
+       } else {
+           alert("Erreur lors de l'export: " + err.message);
+       }
     } finally {
        setIsExporting(false);
     }

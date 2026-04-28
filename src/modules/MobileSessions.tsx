@@ -742,9 +742,20 @@ const SessionRow = ({ session, onShowQr, onImport, onDelete, isConfirmingDelete,
   );
 };
 
+const MODULE_MAP: Record<string, { storageKey: string, zipFile: string }> = {
+  inventaire: { storageKey: 'crousty_inventory', zipFile: 'inventaire.json' },
+  temperature: { storageKey: 'crousty_temp_checklist', zipFile: 'temperatures-frigo.json' },
+  cuisson: { storageKey: 'crousty_viandes', zipFile: 'viandes.json' },
+  tracabilite: { storageKey: 'crousty_tracabilite_v2', zipFile: 'tracabilite.json' },
+  reception: { storageKey: 'crousty_receptions_v3', zipFile: 'receptions.json' },
+  nettoyage: { storageKey: 'crousty_cleaning', zipFile: 'nettoyage.json' },
+  huiles: { storageKey: 'crousty_oil_checklist', zipFile: 'huiles.json' }
+};
+
 const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileSession, onClose: () => void, onImported: () => void }) => {
   const [status, setStatus] = useState<'reading' | 'ready' | 'importing' | 'success' | 'error'>('reading');
   const [summary, setSummary] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<Record<string, any[]>>({});
   const [errorMsg, setErrorMsg] = useState('');
   const { currentUser } = useAuth();
 
@@ -762,6 +773,20 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
         
         const manifest = JSON.parse(await manifestFile.async('text'));
         
+        const extractedData: Record<string, any[]> = {};
+        for(const modId of manifest.modules) {
+          const modConf = MODULE_MAP[modId];
+          if (modConf) {
+            const zf = zip.file(modConf.zipFile);
+            if (zf) {
+               try {
+                  extractedData[modId] = JSON.parse(await zf.async('text'));
+               } catch(e) {}
+            }
+          }
+        }
+        setPreviewData(extractedData);
+
         setSummary({
           workerName: manifest.workerName || session.assignedToName || 'Equipier Mobile',
           itemsCount: manifest.entryCounts ? Object.values(manifest.entryCounts).reduce((a: any, b: any) => a + b, 0) : 0,
@@ -789,16 +814,6 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
       const manifestFile = zip.file('manifest.json');
       if (!manifestFile) throw new Error("Manifeste manquant");
       const manifest = JSON.parse(await manifestFile.async('text'));
-
-      const MODULE_MAP: Record<string, { storageKey: string, zipFile: string }> = {
-        inventaire: { storageKey: 'crousty_inventory', zipFile: 'inventaire.json' },
-        temperature: { storageKey: 'crousty_temp_checklist', zipFile: 'temperatures-frigo.json' },
-        cuisson: { storageKey: 'crousty_viandes', zipFile: 'viandes.json' },
-        tracabilite: { storageKey: 'crousty_tracabilite_v2', zipFile: 'tracabilite.json' },
-        reception: { storageKey: 'crousty_receptions_v3', zipFile: 'receptions.json' },
-        nettoyage: { storageKey: 'crousty_cleaning', zipFile: 'nettoyage.json' },
-        huiles: { storageKey: 'crousty_oil_checklist', zipFile: 'huiles.json' }
-      };
 
       let totalImported = 0;
 
@@ -888,7 +903,7 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
 
   return createPortal(
     <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-       <Card className="w-full max-w-lg p-6 space-y-6 text-center shadow-2xl">
+       <Card className={`w-full p-6 space-y-6 text-center shadow-2xl flex flex-col ${status === 'ready' ? 'max-w-4xl max-h-[90dvh]' : 'max-w-lg'}`}>
           {status === 'reading' && (
             <div className="py-8 space-y-4">
                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -897,44 +912,62 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
           )}
           
           {status === 'ready' && summary && (
-            <div className="animate-in fade-in zoom-in-95 duration-300">
-               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Download size={32} />
+            <div className="flex flex-col h-full animate-in fade-in zoom-in-95 duration-300 min-h-0">
+               <div className="shrink-0 flex items-center gap-4 mb-4">
+                   <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                      <Download size={32} />
+                   </div>
+                   <div className="text-left flex-1">
+                       <h3 className="text-2xl font-black text-gray-800 tracking-tight">Données mobiles reçues</h3>
+                       <p className="text-gray-500 font-medium">Session envoyée par <b className="text-emerald-700">{summary.workerName}</b></p>
+                   </div>
+                   <div className="text-right">
+                       <div className="text-3xl font-black text-crousty-purple">{summary.itemsCount}</div>
+                       <div className="text-[10px] font-black text-gray-400 uppercase">Éléments analysés</div>
+                   </div>
                </div>
-               <h3 className="text-xl font-black text-gray-800">Collecte Mobile Reçue</h3>
-               <p className="text-gray-500 text-sm mt-1">Données envoyées par <b>{summary.workerName}</b></p>
                
-               <div className="mt-6 bg-gray-50 rounded-2xl p-4 grid grid-cols-2 gap-4 text-left">
-                  <div className="bg-white p-3 rounded-xl border border-gray-100">
-                     <span className="text-[10px] font-black text-gray-400 uppercase">Éléments</span>
-                     <div className="text-2xl font-black text-emerald-600">{summary.itemsCount}</div>
-                  </div>
-                  <div className="bg-white p-3 rounded-xl border border-gray-100">
-                     <span className="text-[10px] font-black text-gray-400 uppercase">Erreurs</span>
-                     <div className="text-2xl font-black text-gray-800">{summary.errors}</div>
-                  </div>
-                  <div className="col-span-2 bg-white p-3 rounded-xl border border-gray-100">
-                     <span className="text-[10px] font-black text-gray-400 uppercase">Modules détectés</span>
-                     <div className="flex flex-wrap gap-1.5 mt-1">
-                        {summary.modules && summary.modules.length > 0 ? (
-                           summary.modules.map((mid: string, idx: number) => {
-                             const mod = MODULES_LIST.find(m => m.id === mid);
-                             return (
-                               <span key={`${mid}-${idx}`} className="px-2 py-0.5 bg-gray-50 text-gray-600 font-bold text-[10px] rounded border">
-                                 {mod ? mod.label : mid}
-                               </span>
-                             );
-                           })
-                        ) : (
-                           <span className="text-gray-400 text-[10px]">Aucun module détecté</span>
-                        )}
-                     </div>
-                  </div>
+               <div className="flex-1 overflow-y-auto space-y-6 pr-2 py-2 min-h-0 text-left">
+                  {Object.entries(previewData).map(([modId, items]) => {
+                     const modApp = MODULES_LIST.find(m => m.id === modId);
+                     if (!items || items.length === 0) return null;
+                     return (
+                        <div key={modId} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
+                           <div className="bg-gray-50 border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+                              {modApp && <modApp.icon size={18} className={modApp.color} />}
+                              <h4 className="font-black text-gray-800 tracking-tight">{modApp ? modApp.label : modId}</h4>
+                              <span className="ml-auto bg-white px-2 py-1 rounded-lg text-xs font-bold text-gray-500 border border-gray-100">{items.length} éléments</span>
+                           </div>
+                           <div className="p-4 bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {items.slice(0, 6).map((item, i) => (
+                                <div key={i} className="text-xs bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                   {Object.entries(item)
+                                      .filter(([k]) => k !== 'id' && k !== 'author' && k !== 'importedAt')
+                                      .slice(0, 4)
+                                      .map(([k, v]) => (
+                                         <div key={k} className="flex gap-2 truncate pb-1">
+                                            <span className="font-bold text-gray-400 capitalize w-1/3 truncate text-right shrink-0">{String(k).replace(/_/g, ' ')}:</span>
+                                            <span className="truncate flex-1 font-medium text-gray-700" title={String(v)}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+                                         </div>
+                                   ))}
+                                </div>
+                              ))}
+                              {items.length > 6 && (
+                                <div className="text-xs text-crousty-purple font-bold flex items-center justify-center p-3 bg-purple-50 rounded-xl border border-purple-100 shadow-inner">
+                                  + {items.length - 6} autres éléments ...
+                                </div>
+                              )}
+                           </div>
+                        </div>
+                     );
+                  })}
                </div>
 
-               <div className="mt-8 flex gap-3">
-                  <Button variant="secondary" onClick={onClose} className="flex-1 rounded-xl h-12">Plus tard</Button>
-                  <Button onClick={handleImportFinal} className="flex-1 rounded-xl h-12 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200">Importer</Button>
+               <div className="shrink-0 mt-6 flex gap-3 pt-4 border-t border-gray-100">
+                  <Button variant="secondary" onClick={onClose} className="flex-1 rounded-2xl h-14 text-sm font-black text-gray-500 bg-gray-100 hover:bg-gray-200">FERMER</Button>
+                  <Button onClick={handleImportFinal} className="flex-1 rounded-2xl h-14 text-base font-black bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200">
+                      INTÉGRER LES DONNÉES
+                  </Button>
                </div>
             </div>
           )}
@@ -953,6 +986,19 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
                 </div>
                 <h4 className="text-2xl font-black text-gray-800">Import réussi</h4>
                 <p className="text-gray-500">Les données sont maintenant accessibles dans les modules.</p>
+             </div>
+          )}
+
+          {status === 'error' && (
+             <div className="py-8 space-y-4 animate-in zoom-in-95 duration-300">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-black text-gray-800">Erreur de prévisualisation</h3>
+                <p className="text-red-500 text-sm mb-6">{errorMsg || "Impossible de charger les données."}</p>
+                <div className="flex gap-3">
+                  <Button variant="secondary" onClick={onClose} className="flex-1 rounded-xl h-12">Fermer</Button>
+                </div>
              </div>
           )}
        </Card>

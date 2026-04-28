@@ -56,9 +56,17 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
       setPhotoDataUrl(dataUrl);
       setStatus('idle');
     } catch (err) {
-      console.error(err);
-      setStatus('error');
-      setErrorDetails("Erreur lors de la capture ou de l'optimisation de l'image. Veuillez réessayer.");
+      console.error("Compression erreur:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoDataUrl(event.target?.result as string);
+        setStatus('idle'); // Recovered via fallback
+      };
+      reader.onerror = () => {
+        setStatus('error');
+        setErrorDetails("Erreur de capture. Image illisible sur ce téléphone.");
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -108,7 +116,7 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
     }
   };
 
-  if (!photoDataUrl && status !== 'compressing') return null;
+  if (!photoDataUrl && status !== 'compressing' && status !== 'error') return null;
 
   return createPortal(
     <div className="fixed top-0 left-0 w-full h-[100dvh] z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden">
@@ -229,6 +237,7 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
             <input type="file" accept="image/*" capture="environment" className="hidden" disabled={status === 'saving' || status === 'success'} onChange={e => {
               const file = e.target.files?.[0];
               if (file) processFile(file);
+              e.target.value = '';
             }} />
             <RotateCcw size={18} className="mr-2" /> REPRENDRE
           </label>
@@ -496,6 +505,8 @@ export default function OilChecklist() {
       setInitialFile(file);
       setActivePhotoCuve(num);
     }
+    // Clear the input so the same file could be selected again if cancelled
+    e.target.value = '';
   };
 
   // Helper pour afficher la date relative

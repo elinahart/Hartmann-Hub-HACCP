@@ -1,11 +1,18 @@
 export const APP_NAME = "Hartmann Hub";
-export const APP_VERSION = "2.5.0";
+export const APP_VERSION = "2.5.1";
 export const APP_AUTHOR = "Elina Hartmann";
 export const APP_CONTACT = "elina.hartmann.pro@gmail.com";
 export const APP_DESCRIPTION = "Solution complète de gestion HACCP, traçabilité et pilotage opérationnel professionnel.";
 export const APP_LAST_UPDATE = "28 Avril 2026";
 
 export const APP_CHANGELOG = [
+  {
+    version: "2.5.1",
+    date: "28 Avril 2026",
+    changes: [
+      "Correction d'un bug où la fenêtre TPM ne s'affichait pas après la prise de photo sur certains téléphones (fallback pour formats d'images non supportés)."
+    ]
+  },
   {
     version: "2.5.0",
     date: "28 Avril 2026",

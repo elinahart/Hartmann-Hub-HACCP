@@ -155,7 +155,10 @@ export default function Receptions() {
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      e.target.value = '';
+      return;
+    }
 
     try {
       const dataUrl = await compressPhotoTLC(file);
@@ -168,6 +171,7 @@ export default function Receptions() {
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = '';
   };
 
   const addLigne = () => {

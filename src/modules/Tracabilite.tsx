@@ -128,7 +128,10 @@ export default function Tracabilite() {
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      e.target.value = '';
+      return;
+    }
 
     try {
       const dataUrl = await compressPhotoTLC(file);
@@ -142,6 +145,7 @@ export default function Tracabilite() {
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = '';
   };
 
   const handleManualSubmit = async () => {

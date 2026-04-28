@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Store, Thermometer, Droplets, Sparkles, BookOpen, Users, UploadCloud, Shield, Box, Printer, Smartphone } from 'lucide-react';
+import { X, Store, Thermometer, Droplets, Sparkles, BookOpen, Users, UploadCloud, Shield, Box, Printer, Smartphone, Settings, Flame } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { Button, Input, Label } from './ui/LightUI';
 
@@ -16,6 +16,9 @@ import { IdentiteTab } from './customization/IdentiteTab';
 import { ImpressionTab } from './customization/ImpressionTab';
 import { AuditTab } from './customization/AuditTab';
 import { SessionsTab } from './customization/SessionsTab';
+import { CuissonTab } from './customization/CuissonTab';
+import { ModulesTab } from './customization/ModulesTab';
+import { LayoutGrid } from 'lucide-react';
 
 export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClose: () => void, initialTab?: string }) => {
   const { config, updateConfig } = useConfig();
@@ -23,7 +26,9 @@ export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClo
 
   const tabs = [
     { id: 'identite', label: 'Identité', icon: <Store size={18} /> },
+    { id: 'modules', label: 'Modules', icon: <LayoutGrid size={18} /> },
     { id: 'temperatures', label: 'Zones Températures', icon: <Thermometer size={18} /> },
+    { id: 'cuisson', label: 'Cuisson Alimentaire', icon: <Flame size={18} /> },
     { id: 'huiles', label: 'Cuves d\'Huile', icon: <Droplets size={18} /> },
     { id: 'nettoyage', label: 'Plan de Nettoyage', icon: <Sparkles size={18} /> },
     { id: 'produits', label: 'Catalogue Produits', icon: <BookOpen size={18} /> },
@@ -37,10 +42,11 @@ export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClo
 
   return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-5xl h-[85dvh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+      <div className="bg-white rounded-3xl w-full max-w-7xl h-[90dvh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-          <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
-            <span className="text-3xl">🎨</span> Personnaliser le restaurant
+          <h2 className="text-xl font-black text-gray-800 flex items-center gap-3">
+            <Settings className="text-gray-400" size={24} /> 
+            Configuration Restaurant
           </h2>
           <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
             <X size={24} />
@@ -68,7 +74,9 @@ export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClo
           {/* Content Area */}
           <div className="flex-1 p-8 overflow-y-auto bg-white">
             {activeTab === 'identite' && <IdentiteTab />}
+            {activeTab === 'modules' && <ModulesTab />}
             {activeTab === 'temperatures' && <TemperaturesTab />}
+            {activeTab === 'cuisson' && <CuissonTab />}
             {activeTab === 'huiles' && <HuilesTab />}
             {activeTab === 'nettoyage' && <NettoyageTab />}
             {activeTab === 'produits' && <ProduitsTab />}

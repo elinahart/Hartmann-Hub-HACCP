@@ -166,6 +166,12 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       const storedNettoyage = localStorage.getItem('crousty-nettoyage-taches');
       if (storedNettoyage) currentData.nettoyage = JSON.parse(storedNettoyage);
+
+      const storedCuisson = localStorage.getItem('crousty-cuisson-produits');
+      if (storedCuisson) currentData.cuisson = JSON.parse(storedCuisson);
+
+      const storedModules = localStorage.getItem('crousty-modules-activation');
+      if (storedModules) currentData.modules = JSON.parse(storedModules);
     } catch (e) {
       console.warn("Failed to sync latest module data", e);
     }
@@ -273,11 +279,19 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             localStorage.setItem('crousty-nettoyage-taches', dataStr);
             window.dispatchEvent(new CustomEvent('crousty-nettoyage-updated'));
             break;
+          case 'cuisson':
+            localStorage.setItem('crousty-cuisson-produits', dataStr);
+            window.dispatchEvent(new CustomEvent('crousty-cuisson-updated'));
+            break;
+          case 'modules':
+            localStorage.setItem('crousty-modules-activation', dataStr);
+            window.dispatchEvent(new CustomEvent('crousty-modules-updated'));
+            break;
         }
       };
 
       if (finalMode === 'global') {
-        (['employes', 'produits', 'temperatures', 'huiles', 'nettoyage'] as ModuleName[]).forEach(syncModule);
+        (['employes', 'produits', 'temperatures', 'huiles', 'nettoyage', 'cuisson', 'modules'] as ModuleName[]).forEach(syncModule);
       } else {
         syncModule(finalModule);
       }

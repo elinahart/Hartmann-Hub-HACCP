@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
-import { Thermometer, Edit2, Trash2, Plus, Snowflake } from 'lucide-react';
+import { Thermometer, Edit2, Trash2, Plus, Snowflake, Shield, Check, AlertTriangle } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { Button, Input, Label } from '../ui/LightUI';
+import { useAuth } from '../../contexts/AuthContext';
+import { cn } from '../../lib/utils';
 
 import { useTemperatures } from '../../providers/TemperaturesProvider';
 
 export const TemperaturesTab = () => {
   const { config, updateConfig } = useConfig();
+  const { currentUser } = useAuth();
+  const isManager = currentUser?.role === 'manager';
   const { zones, setZones } = useTemperatures();
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState<'selected' | 'all' | null>(null);
+
   // Form state
   const [nom, setNom] = useState('');
   const [type, setType] = useState<'positif' | 'negatif'>('positif');
@@ -74,6 +83,33 @@ export const TemperaturesTab = () => {
     updateConfig({ temperatures: newTemps });
     setZones(newTemps);
     setConfirmDelete(null);
+    setSelectedIds(prev => prev.filter(v => v !== id));
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === temperatures.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(temperatures.map((t: any) => t.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    let newTemps = [];
+    if (showBulkDeleteConfirm === 'selected') {
+      newTemps = temperatures.filter((t: any) => !selectedIds.includes(t.id));
+    }
+    updateConfig({ temperatures: newTemps });
+    setZones(newTemps);
+    setSelectedIds([]);
+    setShowBulkDeleteConfirm(null);
+    setIsSelectionMode(false);
   };
 
   return (
@@ -87,11 +123,91 @@ export const TemperaturesTab = () => {
         )}
       </div>
 
+      {isManager && temperatures.length > 0 && !editingId && (
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-[10px] uppercase tracking-widest">
+              <Shield size={14} className="text-amber-500" />
+              Gestion
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedIds([]);
+                }}
+                className={cn(
+                  "h-7 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                  isSelectionMode ? "bg-amber-200 text-amber-900" : "bg-white text-gray-500 border border-gray-200"
+                )}
+              >
+                {isSelectionMode ? 'Annuler' : 'Sélectionner'}
+              </Button>
+              <Button 
+                onClick={() => setShowBulkDeleteConfirm('all')}
+                className="h-7 px-3 bg-red-100 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+                variant="ghost"
+              >
+                Vider
+              </Button>
+            </div>
+          </div>
+
+          {isSelectionMode && (
+            <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-amber-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleSelectAll}
+                  className="w-5 h-5 rounded border-2 border-amber-400 flex items-center justify-center"
+                >
+                  {selectedIds.length === temperatures.length && <Check size={14} className="text-amber-500" />}
+                </button>
+                <span className="text-[10px] font-black text-amber-900 uppercase">{selectedIds.length} sélectionné(s)</span>
+              </div>
+              <Button 
+                disabled={selectedIds.length === 0}
+                onClick={() => setShowBulkDeleteConfirm('selected')}
+                className="h-7 px-3 bg-red-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest"
+              >
+                Supprimer
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-black text-gray-900">Confirmation</h3>
+              <p className="text-sm text-gray-500 font-medium">
+                {showBulkDeleteConfirm === 'all' 
+                  ? "Vider toute la liste des zones ?"
+                  : `Supprimer les ${selectedIds.length} zones sélectionnées ?`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowBulkDeleteConfirm(null)} variant="ghost" className="flex-1">Non</Button>
+              <Button onClick={handleBulkDelete} className="flex-1 bg-red-500">Oui</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {temperatures.map((t: any) => (
-          <div key={t.id} className="border border-gray-100 rounded-2xl bg-white overflow-hidden shadow-sm">
+          <div 
+            key={t.id} 
+            onClick={() => isSelectionMode && toggleSelection(t.id)}
+            className={cn(
+              "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all cursor-pointer",
+              editingId === t.id ? "border-crousty-purple ring-2 ring-purple-50" : "border-gray-100",
+              selectedIds.includes(t.id) && "border-amber-400 bg-amber-50/20"
+            )}
+          >
             {editingId === t.id ? (
-              <div className="p-4 bg-gray-50 space-y-4">
+              <div className="p-4 bg-gray-50 space-y-4" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center">
                   <h4 className="font-bold text-gray-800">Modifier la zone</h4>
                 </div>
@@ -126,13 +242,21 @@ export const TemperaturesTab = () => {
                 {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-2 rounded-md">{error}</p>}
                 <div className="flex gap-2 justify-end pt-2">
                   <Button variant="outline" onClick={() => setEditingId(null)}>Annuler</Button>
-                  <Button onClick={handleSave} className="bg-crousty-purple">Enregistrer</Button>
+                  <Button onClick={handleSave} className="bg-crousty-purple text-white">Enregistrer</Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between p-4 mix-h-[44px]">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${t.type === 'negatif' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                  {isSelectionMode && (
+                    <div className={cn(
+                      "w-5 h-5 rounded-lg border-2 shrink-0 flex items-center justify-center transition-colors",
+                      selectedIds.includes(t.id) ? "bg-amber-500 border-amber-500" : "border-gray-200 bg-white"
+                    )}>
+                      {selectedIds.includes(t.id) && <Check size={12} className="text-white" />}
+                    </div>
+                  )}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${t.type === 'negatif' ? 'bg-blue-50 text-blue-500' : 'bg-orange-50 text-orange-500'}`}>
                     {t.type === 'negatif' ? <Snowflake size={20} /> : <Thermometer size={20} />}
                   </div>
                   <div>
@@ -140,14 +264,16 @@ export const TemperaturesTab = () => {
                     <span className="text-xs font-semibold text-gray-500">{t.seuilMin}°C à {t.seuilMax}°C</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 active:text-crousty-purple bg-gray-50 active:bg-crousty-purple/10 rounded-xl transition-colors">
-                    <Edit2 size={20} />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(t.id); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 active:text-red-500 bg-gray-50 active:bg-red-50 rounded-xl transition-colors">
-                    <Trash2 size={20} />
-                  </button>
-                </div>
+                {!isSelectionMode && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-2 text-gray-400 hover:text-crousty-purple hover:bg-purple-50 rounded-xl transition-colors">
+                      <Edit2 size={20} />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(t.id); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -182,7 +308,7 @@ export const TemperaturesTab = () => {
         )}
 
         {editingId === 'NEW' && (
-          <div className="border border-gray-100 rounded-2xl bg-gray-50 p-4 space-y-4 shadow-sm">
+          <div className="border border-gray-100 rounded-2xl bg-gray-50 p-4 space-y-4 shadow-sm" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center">
               <h4 className="font-bold text-gray-800">Ajouter une zone</h4>
             </div>
@@ -217,17 +343,18 @@ export const TemperaturesTab = () => {
             {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-2 rounded-md">{error}</p>}
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" onClick={() => setEditingId(null)}>Annuler</Button>
-              <Button onClick={handleSave} className="bg-crousty-purple">Enregistrer</Button>
+              <Button onClick={handleSave} className="bg-crousty-purple text-white">Enregistrer</Button>
             </div>
           </div>
         )}
 
         {temperatures.length === 0 && editingId !== 'NEW' && (
           <div className="text-center p-8 bg-gray-50 rounded-2xl border border-gray-100">
-            <p className="text-gray-500 font-medium">Aucune zone configurée.</p>
+            <p className="text-gray-500 font-medium tracking-tight">Aucune zone configurée.</p>
           </div>
         )}
       </div>
     </div>
   );
 };
+

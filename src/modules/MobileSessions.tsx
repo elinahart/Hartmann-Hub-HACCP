@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Smartphone, Search, Plus, RefreshCw, Calendar, Clock, User, QrCode, 
   CheckCircle2, AlertTriangle, ArrowRight, History, Trash2,
   Filter, X, Info, Download, Eye, ChevronRight, ClipboardList, Thermometer, Flame, 
-  Package, Droplets, Droplet, ListFilter, Trash
+  Package, Droplets, Droplet, ListFilter, Trash, Shield
 } from 'lucide-react';
 import { Card, Button, Input, Label } from '../components/ui/LightUI';
 import { StatusBadge, StatusType } from '../components/ui/StatusBadge';
@@ -110,6 +111,18 @@ export const MobileSessions = () => {
         setSessions(local);
       });
   };
+
+  useEffect(() => {
+    if (showQrModal) {
+      const currentSession = sessions.find(s => s.id === showQrModal.id);
+      if (currentSession && (currentSession.status === 'connected' || currentSession.status === 'collecting' || currentSession.status === 'uploaded')) {
+        const timer = setTimeout(() => {
+          setShowQrModal(null);
+        }, 1200); // 1.2s delay to show the connection success message
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [showQrModal, sessions]);
 
   const handleDeleteSession = async (sid: string) => {
     try {
@@ -401,9 +414,9 @@ export const MobileSessions = () => {
       </div>
 
       {/* NEW SESSION MODAL */}
-      {showNewModal && (
+      {showNewModal && createPortal(
         <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-           <Card className="w-full max-w-2xl max-h-[90dvh] overflow-y-auto p-0 flex flex-col">
+           <Card className="w-full max-w-2xl max-h-[90dvh] overflow-y-auto p-0 flex flex-col shadow-2xl">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
                 <h2 className="text-xl font-black text-gray-800">Nouvelle Session Mobile</h2>
                 <button onClick={() => setShowNewModal(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20}/></button>
@@ -483,7 +496,8 @@ export const MobileSessions = () => {
                  <Button onClick={handleCreateSession} className="flex-1 rounded-xl h-12 shadow-lg shadow-crousty-purple/20">Lancer la session</Button>
               </div>
            </Card>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* QR MODAL */}
@@ -491,10 +505,10 @@ export const MobileSessions = () => {
         const currentSession = sessions.find(s => s.id === showQrModal.id) || showQrModal;
         const isConnected = currentSession.status === 'connected' || currentSession.status === 'collecting' || currentSession.status === 'uploaded';
         
-        return (
+        return createPortal(
           <div className="fixed inset-0 z-[7000] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4">
-             <div className="text-center space-y-6 text-white animate-in zoom-in-95 duration-300">
-                <div className="bg-white p-8 rounded-[3rem] shadow-2xl inline-block">
+             <div className="text-center space-y-6 text-white animate-in zoom-in-95 duration-300 flex flex-col items-center justify-center">
+                <div className="bg-white p-8 rounded-[3rem] shadow-2xl inline-block mx-auto">
                    <QRCodeSVG 
                     value={window.location.origin + window.location.pathname + '?session=' + btoa(encodeURIComponent(JSON.stringify({
                       t: 'cch-mob',
@@ -509,6 +523,7 @@ export const MobileSessions = () => {
                     level="H"
                   />
                 </div>
+
                 <div>
                    <h2 className="text-3xl font-black">{currentSession.sessionName}</h2>
                    <p className="text-purple-200 font-bold uppercase tracking-widest text-xs mt-2">
@@ -531,9 +546,10 @@ export const MobileSessions = () => {
                   </div>
                 )}
                 
-                <Button variant="secondary" onClick={() => setShowQrModal(null)} className="bg-white text-gray-900 border-none h-12 px-8 rounded-2xl font-black">FERMER</Button>
+                <Button variant="secondary" onClick={() => setShowQrModal(null)} className="bg-white text-gray-900 border-none h-12 px-8 rounded-2xl font-black mx-auto block mt-8">FERMER</Button>
              </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
@@ -547,9 +563,9 @@ export const MobileSessions = () => {
       )}
 
       {/* FULL AUDIT MODAL */}
-      {showFullAudit && (
+      {showFullAudit && createPortal(
         <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-           <Card className="w-full max-w-2xl max-h-[90dvh] overflow-hidden p-0 flex flex-col">
+           <Card className="w-full max-w-2xl max-h-[90dvh] overflow-hidden p-0 flex flex-col shadow-2xl">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
                 <div className="flex items-center gap-3">
                   <History className="text-crousty-purple" size={24} />
@@ -601,7 +617,8 @@ export const MobileSessions = () => {
                 <Button onClick={() => setShowFullAudit(false)} className="rounded-xl px-8">Fermer</Button>
               </div>
            </Card>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -846,9 +863,9 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-       <Card className="w-full max-w-lg p-6 space-y-6 text-center">
+       <Card className="w-full max-w-lg p-6 space-y-6 text-center shadow-2xl">
           {status === 'reading' && (
             <div className="py-8 space-y-4">
                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -916,6 +933,7 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
              </div>
           )}
        </Card>
-    </div>
+    </div>,
+    document.body
   );
 };

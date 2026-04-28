@@ -42,3 +42,15 @@ export function logAuditEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>) {
 export function getAuditEvents(): AuditEvent[] {
   return getStoredData<AuditEvent[]>('crousty_audit_log', []);
 }
+
+export function clearAuditEvents() {
+  setStoredData('crousty_audit_log', []);
+  window.dispatchEvent(new Event('crousty_audit_updated'));
+}
+
+export function deleteAuditEvents(ids: string[]) {
+  const events = getAuditEvents();
+  const filtered = events.filter(e => !ids.includes(e.id));
+  setStoredData('crousty_audit_log', filtered);
+  window.dispatchEvent(new Event('crousty_audit_updated'));
+}

@@ -46,11 +46,23 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
   const [isExporting, setIsExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
 
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   useEffect(() => {
      if (!configSynced && !syncingConfig) {
         setSyncingConfig(true);
+        setSyncError(null);
+        
         fetch(`/api/sessions/${session.sid}/config`)
-          .then(res => res.json())
+          .then(async res => {
+             if (res.status === 403) {
+                throw new Error("ACCÈS REFUSÉ (403) : Cette URL est protégée. Vérifiez que vous n'utilisez pas l'URL de TEST au lieu de l'URL PUBLIQUE.");
+             }
+             if (!res.ok) {
+                throw new Error(`Erreur serveur (${res.status})`);
+             }
+             return res.json();
+          })
           .then(data => {
              let synced = false;
              if (data.configSnapshot) {
@@ -71,15 +83,15 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
              setSyncingConfig(false);
              
              if (synced) {
-                // IMPORTANT: We must reload the page so that all React Context Providers 
-                // in main.tsx pick up the newly imported configuration from localStorage.
+                // We reload to apply new config effectively
                 window.location.reload();
              }
           })
-          .catch(() => {
-             console.warn('Impossible de récupérer la configuration.');
-             setConfigSynced(true); // fall back to local/defaults
+          .catch((err) => {
+             console.error('Erreur de synchronisation:', err);
+             setSyncError(err.message || 'Erreur inconnue');
              setSyncingConfig(false);
+             // We don't mark as synced yet, we want to show the error
           });
      }
   }, [configSynced, syncingConfig, session.sid]);
@@ -237,9 +249,29 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
   if (!configSynced) {
      return (
        <div className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-         <div className="w-12 h-12 border-4 border-crousty-purple border-t-transparent rounded-full animate-spin mb-6"></div>
-         <h2 className="text-xl font-black text-gray-800">{t('mobile_app_syncing')}</h2>
-         <p className="text-gray-500 mt-2">{t('mobile_app_sync_desc')}</p>
+         {syncError ? (
+           <div className="max-w-md space-y-6">
+              <div className="w-20 h-20 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                 <X size={40} />
+              </div>
+              <h2 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Erreur de Connexion</h2>
+              <p className="text-gray-500 text-sm bg-white p-4 rounded-xl border border-red-100 shadow-sm leading-relaxed">
+                 {syncError}
+              </p>
+              <div className="pt-4 space-y-3">
+                 <Button onClick={() => setConfigSynced(false)} className="w-full">Réessayer</Button>
+                 <Button variant="secondary" onClick={() => {
+                    setConfigSynced(true); // ignore and use local defaults
+                 }} className="w-full text-gray-400">Ignorer (Mode dégradé)</Button>
+              </div>
+           </div>
+         ) : (
+           <>
+            <div className="w-12 h-12 border-4 border-crousty-purple border-t-transparent rounded-full animate-spin mb-6"></div>
+            <h2 className="text-xl font-black text-gray-800">{t('mobile_app_syncing')}</h2>
+            <p className="text-gray-500 mt-2">{t('mobile_app_sync_desc')}</p>
+           </>
+         )}
        </div>
      );
   }

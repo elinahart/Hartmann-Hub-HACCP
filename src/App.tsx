@@ -12,6 +12,7 @@ import CleaningPlan from './modules/CleaningPlan';
 import ProductManager from './modules/ProductManager';
 import Viandes from './modules/Viandes';
 import Inventaire from './modules/Inventaire';
+import InventaireIntelligent from './modules/InventaireIntelligent';
 import { MobileSessions } from './modules/MobileSessions';
 import { clearAllData, getStoredData } from './lib/db';
 import { QRScanner } from './components/QRScanner';
@@ -40,7 +41,7 @@ import { ManagerUIProvider } from './contexts/ManagerUIContext';
 
 import { useI18n } from './lib/i18n';
 
-type View = 'dashboard' | 'receptions' | 'tracabilite' | 'prep' | 'temperatures' | 'desserts' | 'oil' | 'cleaning' | 'products' | 'viandes' | 'inventaire' | 'sessions-mobiles';
+type View = 'dashboard' | 'receptions' | 'tracabilite' | 'prep' | 'temperatures' | 'desserts' | 'oil' | 'cleaning' | 'products' | 'viandes' | 'inventaire' | 'inventaire-intelligent' | 'sessions-mobiles';
 
 const Tile = ({ icon: Icon, title, badge, alert, status, statusColor = 'gray', onClick }: { icon: any, title: string, badge?: number, alert?: boolean, status?: React.ReactNode, statusColor?: string, onClick: () => void }) => {
   const getStatusColor = () => {
@@ -62,11 +63,11 @@ const Tile = ({ icon: Icon, title, badge, alert, status, statusColor = 'gray', o
       className={`bg-white rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center gap-2 sm:gap-3 relative shadow-[0_4px_20px_rgba(0,0,0,0.04)] border ${alert ? 'border-l-4 border-l-red-500 border-y-gray-100 border-r-gray-100' : 'border-gray-100'} text-center aspect-square`}
     >
       {badge ? (
-        <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md ${alert ? 'bg-red-500' : 'bg-crousty-purple'}`}>
+        <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md ${alert ? 'bg-red-500' : 'bg-[var(--color-primary)]'}`}>
           {badge}
         </div>
       ) : null}
-      <Icon className="text-crousty-purple w-6 h-6 sm:w-8 sm:h-8" strokeWidth={1.5} />
+      <Icon className="text-[var(--color-primary)] w-6 h-6 sm:w-8 sm:h-8" strokeWidth={1.5} />
       <div className="font-black text-gray-800 leading-tight text-sm sm:text-base">{title}</div>
       {status && (
         <div className={`mt-auto text-[9px] sm:text-[10px] md:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md border w-full max-w-full truncate ${getStatusColor()}`}>
@@ -79,9 +80,28 @@ const Tile = ({ icon: Icon, title, badge, alert, status, statusColor = 'gray', o
 
 export default function App() {
   const { currentUser, logout } = useAuth();
+  const { config } = useConfig();
   const { isPersistent, estimate } = usePersistentStorage();
   const { t, language } = useI18n();
   const [currentView, setCurrentView] = useState<View>('dashboard');
+
+  useEffect(() => {
+    let isDisabled = false;
+    if (currentView === 'receptions' && config.modules?.reception === false) isDisabled = true;
+    if (currentView === 'tracabilite' && config.modules?.traceabilite === false) isDisabled = true;
+    if (currentView === 'temperatures' && config.modules?.temperatures === false) isDisabled = true;
+    if (currentView === 'viandes' && config.modules?.cuisson === false) isDisabled = true;
+    if (currentView === 'cleaning' && config.modules?.nettoyage === false) isDisabled = true;
+    if (currentView === 'desserts' && config.modules?.dlc === false) isDisabled = true;
+    if (currentView === 'prep' && config.modules?.preparations === false) isDisabled = true;
+    if (currentView === 'oil' && config.modules?.huiles === false) isDisabled = true;
+    if (currentView === 'inventaire' && config.modules?.inventaire === false) isDisabled = true;
+    if (currentView === 'sessions-mobiles' && config.modules?.sessions === false) isDisabled = true;
+
+    if (isDisabled) {
+      setCurrentView('dashboard');
+    }
+  }, [config.modules, currentView]);
   const [showSettings, setShowSettings] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -281,13 +301,28 @@ export default function App() {
       }
     }
 
-    let score = 0;
-    let done = 0;
-    if (tempsMorningDone) { score += 16; done++; }
-    if (tempsEveningDone) { score += 17; done++; }
-    if (cleaningToday) { score += 33; done++; }
-    if (cuissonToday) { score += 17; done++; }
-    if (oilToday) { score += 17; done++; }
+    let doneCount = 0;
+    let totalPossible = 0;
+
+    if (config.modules?.temperatures !== false) {
+      totalPossible += 2;
+      if (tempsMorningDone) doneCount++;
+      if (tempsEveningDone) doneCount++;
+    }
+    if (config.modules?.nettoyage !== false) {
+      totalPossible += 1;
+      if (cleaningToday) doneCount++;
+    }
+    if (config.modules?.cuisson !== false) {
+      totalPossible += 1;
+      if (cuissonToday) doneCount++;
+    }
+    if (config.modules?.huiles !== false) {
+      totalPossible += 1;
+      if (oilToday) doneCount++;
+    }
+
+    const calculatedScore = totalPossible > 0 ? Math.round((doneCount / totalPossible) * 100) : 0;
     
     // Get last temperature recorded
     const lastTempEntry = temps.length > 0 ? temps[0] : null;
@@ -297,24 +332,24 @@ export default function App() {
       if (firstValid) lastTempStr = `${firstValid}°C`;
     }
 
-    setDailyProgress(score);
+    setDailyProgress(calculatedScore);
     setAlerts({
-      temps: tempsAlert,
-      cleaning: cleaningAlert,
-      cuisson: cuissonAlert,
-      oil: !oilToday,
-      dlcCount: dlcAlertCount + dlcExpired,
-      eveningShortage: isEvening && expiringTonightCount > 0,
-      morningCheck: isMorning && dlcExpired > 0,
-      expiringTonight: expiringTonightCount,
-      totalExpired: dlcExpired,
-      tempsMorningMissed,
-      tempsEveningMissed,
-      oilAlertsData: oilAlertsStatus
+      temps: config.modules?.temperatures !== false ? tempsAlert : false,
+      cleaning: config.modules?.nettoyage !== false ? cleaningAlert : false,
+      cuisson: config.modules?.cuisson !== false ? cuissonAlert : false,
+      oil: config.modules?.huiles !== false ? !oilToday : false,
+      dlcCount: (config.modules?.dlc !== false) ? (dlcAlertCount + dlcExpired) : 0,
+      eveningShortage: (config.modules?.dlc !== false) && isEvening && expiringTonightCount > 0,
+      morningCheck: (config.modules?.dlc !== false) && isMorning && dlcExpired > 0,
+      expiringTonight: (config.modules?.dlc !== false) ? expiringTonightCount : 0,
+      totalExpired: (config.modules?.dlc !== false) ? dlcExpired : 0,
+      tempsMorningMissed: (config.modules?.temperatures !== false) ? tempsMorningMissed : false,
+      tempsEveningMissed: (config.modules?.temperatures !== false) ? tempsEveningMissed : false,
+      oilAlertsData: (config.modules?.huiles !== false) ? oilAlertsStatus : []
     });
     setKpiData({
-      tasksDone: done,
-      tasksRemaining: 5 - done,
+      tasksDone: doneCount,
+      tasksRemaining: totalPossible - doneCount,
       lastTemp: lastTempStr,
       lastAction: dateToTimeAgo(temps.length ? temps[0].date : null)
     });
@@ -377,6 +412,7 @@ export default function App() {
       case 'desserts': return t('nav_desserts');
       case 'products': return t('nav_products');
       case 'inventaire': return t('nav_inventaire');
+      case 'inventaire-intelligent': return 'A.I. Manager';
       case 'sessions-mobiles': return t('nav_mobile_sessions');
       default: return '';
     }
@@ -394,58 +430,70 @@ export default function App() {
       case 'products': return <ProductManager />;
       case 'viandes': return <Viandes />;
       case 'inventaire': return <Inventaire setIsSidebarCollapsed={setIsSidebarCollapsed} />;
+      case 'inventaire-intelligent': return <InventaireIntelligent />;
       case 'sessions-mobiles': return <MobileSessions />;
       default: return (
         <div className="p-4 space-y-6 max-w-4xl mx-auto relative w-full pb-20">
           {/* Header */}
-          <header className="px-4 py-8 mb-4">
-            <div className="max-w-4xl mx-auto overflow-hidden">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
+          <header className="px-6 py-8 mb-6 bg-white border-b border-gray-100 rounded-b-[2rem] shadow-sm">
+            <div className="max-w-5xl mx-auto">
+              <div className="flex items-center justify-between gap-6">
+                <div className="flex items-center gap-5 min-w-0">
                   <button 
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className="md:hidden w-10 h-10 flex items-center justify-center bg-gray-50 border border-gray-100 rounded-xl text-gray-600 shrink-0"
+                    className="md:hidden w-11 h-11 flex items-center justify-center bg-gray-50 border border-gray-100 rounded-xl text-gray-500 shrink-0 shadow-sm"
                   >
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                        <div className="w-5 h-0.5 bg-current rounded-full"></div>
                        <div className="w-4 h-0.5 bg-current rounded-full"></div>
                        <div className="w-5 h-0.5 bg-current rounded-full"></div>
                     </div>
                   </button>
-                  <RestaurantLogo size="sm" className="hidden md:flex" />
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h1 className="text-3xl font-black text-gray-800 tracking-tight truncate">
+                  
+                  <div className="hidden md:block p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                    <RestaurantLogo size="sm" />
+                  </div>
+
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {currentUser?.role === 'manager' ? 'Admin / Manager' : 'Équipe Terrain'}
+                      </p>
+                    </div>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight truncate leading-none">
                       {new Date().getHours() >= 18 ? t('dashboard_good_evening') : t('dashboard_good_morning')} {currentUser?.name}
                     </h1>
-                    {currentUser?.role === 'manager' && (
-                      <span className="py-1 px-3 bg-[var(--color-primary)] text-white text-[10px] font-black rounded-lg uppercase tracking-wider shrink-0 shadow-sm">{t('role_manager')}</span>
-                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                       <span className="text-[11px] font-bold text-gray-400">{format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}</span>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="p-1 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-1">
+                    <button 
+                      onClick={() => setCurrentView('sessions-mobiles')}
+                      className="h-12 px-5 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-900 hover:border-[var(--color-secondary)] hover:text-[var(--color-secondary)] transition-all shadow-sm active:scale-95 gap-3 group"
+                      title={t('nav_mobile_sessions')}
+                    >
+                      <Smartphone size={20} className="group-hover:scale-110 transition-transform" />
+                      <span className="font-black text-xs uppercase tracking-widest hidden sm:block">{t('dashboard_mobile_btn')}</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => setIsExportModalOpen(true)}
+                      className="w-12 h-12 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shadow-sm active:scale-95"
+                      title={t('dashboard_download_zip')}
+                    >
+                      <Download size={20} />
+                    </button>
+                  </div>
+                  
+                  <div className="h-14 w-[1px] bg-slate-100 mx-2 hidden md:block" />
+                  
                   <UserMenu />
-                  <button 
-                    onClick={() => setCurrentView('sessions-mobiles')}
-                    className="h-10 px-3 flex items-center justify-center bg-purple-50 border border-purple-100 rounded-xl text-crousty-purple hover:bg-purple-100 transition-colors shadow-sm active:scale-95 gap-2"
-                    title={t('nav_mobile_sessions')}
-                  >
-                    <Smartphone size={20} />
-                    <span className="font-bold text-sm hidden sm:block">{t('dashboard_mobile_btn')}</span>
-                  </button>
-                  <button 
-                    onClick={() => setIsExportModalOpen(true)}
-                    className="w-10 h-10 flex items-center justify-center bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-[var(--color-secondary)] transition-colors shadow-sm active:scale-95"
-                    title={t('dashboard_download_zip')}
-                  >
-                    <Download size={20} />
-                  </button>
                 </div>
-              </div>
-              <div className="max-w-4xl mx-auto overflow-hidden">
-                <p className="text-[var(--color-secondary)] font-bold text-base capitalize mt-2 px-1">
-                  {format(new Date(), 'EEEE d MMMM yyyy', { locale: language === 'fr' ? fr : undefined })}
-                </p>
               </div>
             </div>
           </header>
@@ -495,73 +543,91 @@ export default function App() {
 
           {/* Grid Modules */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-            <Tile 
-              icon={Package} 
-              title={t('nav_receptions')} 
-              status={t('dashboard_lots_count', { count: dashboardStats?.receptions || 0 })} 
-              statusColor={dashboardStats?.receptions > 0 ? 'green' : 'gray'}
-              onClick={() => setCurrentView('receptions')} 
-            />
-            <Tile 
-              icon={Sparkles} 
-              title={t('nav_tracabilite')} 
-              status={t('dashboard_openings_count', { count: dashboardStats?.traca || 0 })} 
-              statusColor={dashboardStats?.traca > 0 ? 'purple' : 'gray'}
-              onClick={() => setCurrentView('tracabilite')} 
-            />
-            <Tile 
-              icon={Thermometer} 
-              title={t('nav_temperatures')} 
-              alert={alerts.temps} 
-              status={dashboardStats?.tempsDone ? t('status_up_to_date') : t('status_pending')}
-              statusColor={dashboardStats?.tempsDone ? 'green' : 'red'}
-              onClick={() => setCurrentView('temperatures')} 
-            />
-            <Tile 
-              icon={Flame} 
-              title={t('nav_viandes')} 
-              status={t('dashboard_readings_count', { count: dashboardStats?.viandes || 0 })}
-              statusColor={dashboardStats?.viandes > 0 ? 'orange' : 'gray'}
-              onClick={() => setCurrentView('viandes')} 
-            />
-            <Tile 
-              icon={Sparkles} 
-              title={t('nav_cleaning')} 
-              alert={alerts.cleaning} 
-              status={t('dashboard_tasks_count', { count: dashboardStats?.cleaningTasks || 0 })}
-              statusColor={dashboardStats?.cleaningTasks > 0 ? 'green' : 'orange'}
-              onClick={() => setCurrentView('cleaning')} 
-            />
-            <Tile 
-              icon={Tag} 
-              title={t('nav_desserts')} 
-              badge={alerts.dlcCount > 0 ? alerts.dlcCount : undefined} 
-              alert={alerts.dlcCount > 0} 
-              status={`${dashboardStats?.dlcActive || 0} act. / ${dashboardStats?.dlcExpired || 0} exp.`}
-              statusColor={alerts.dlcCount > 0 ? 'red' : 'purple'}
-              onClick={() => setCurrentView('desserts')} 
-            />
-            <Tile 
-              icon={ChefHat} 
-              title={t('nav_prep')} 
-              status={t('dashboard_bins_count', { count: dashboardStats?.preps || 0 })}
-              statusColor={dashboardStats?.preps > 0 ? 'green' : 'gray'}
-              onClick={() => setCurrentView('prep')} 
-            />
-            <Tile 
-              icon={Droplet} 
-              title={t('nav_oil')} 
-              alert={alerts.oil} 
-              status={dashboardStats?.oilDone ? t('status_done') : t('status_to_do')}
-              statusColor={dashboardStats?.oilDone ? 'green' : 'orange'}
-              onClick={() => setCurrentView('oil')} 
-            />
-            <Tile 
-              icon={ClipboardList} 
-              title={t('nav_inventaire')} 
-              status={t('btn_manage')}
-              onClick={() => setCurrentView('inventaire')} 
-            />
+            {config.modules?.reception !== false && (
+              <Tile 
+                icon={Package} 
+                title={t('nav_receptions')} 
+                status={t('dashboard_lots_count', { count: dashboardStats?.receptions || 0 })} 
+                statusColor={dashboardStats?.receptions > 0 ? 'green' : 'gray'}
+                onClick={() => setCurrentView('receptions')} 
+              />
+            )}
+            {config.modules?.traceabilite !== false && (
+              <Tile 
+                icon={QrCode} 
+                title={t('nav_tracabilite')} 
+                status={t('dashboard_openings_count', { count: dashboardStats?.traca || 0 })} 
+                statusColor={dashboardStats?.traca > 0 ? 'purple' : 'gray'}
+                onClick={() => setCurrentView('tracabilite')} 
+              />
+            )}
+            {config.modules?.temperatures !== false && (
+              <Tile 
+                icon={Thermometer} 
+                title={t('nav_temperatures')} 
+                alert={alerts.temps} 
+                status={dashboardStats?.tempsDone ? t('status_up_to_date') : t('status_pending')}
+                statusColor={dashboardStats?.tempsDone ? 'green' : 'red'}
+                onClick={() => setCurrentView('temperatures')} 
+              />
+            )}
+            {config.modules?.cuisson !== false && (
+              <Tile 
+                icon={Flame} 
+                title={t('nav_viandes')} 
+                status={t('dashboard_readings_count', { count: dashboardStats?.viandes || 0 })}
+                statusColor={dashboardStats?.viandes > 0 ? 'orange' : 'gray'}
+                onClick={() => setCurrentView('viandes')} 
+              />
+            )}
+            {config.modules?.nettoyage !== false && (
+              <Tile 
+                icon={Sparkles} 
+                title={t('nav_cleaning')} 
+                alert={alerts.cleaning} 
+                status={t('dashboard_tasks_count', { count: dashboardStats?.cleaningTasks || 0 })}
+                statusColor={dashboardStats?.cleaningTasks > 0 ? 'green' : 'orange'}
+                onClick={() => setCurrentView('cleaning')} 
+              />
+            )}
+            {config.modules?.dlc !== false && (
+              <Tile 
+                icon={Tag} 
+                title={t('nav_desserts')} 
+                badge={alerts.dlcCount > 0 ? alerts.dlcCount : undefined} 
+                alert={alerts.dlcCount > 0} 
+                status={`${dashboardStats?.dlcActive || 0} act. / ${dashboardStats?.dlcExpired || 0} exp.`}
+                statusColor={alerts.dlcCount > 0 ? 'red' : 'purple'}
+                onClick={() => setCurrentView('desserts')} 
+              />
+            )}
+            {config.modules?.preparations !== false && (
+              <Tile 
+                icon={ChefHat} 
+                title={t('nav_prep')} 
+                status={t('dashboard_bins_count', { count: dashboardStats?.preps || 0 })}
+                statusColor={dashboardStats?.preps > 0 ? 'green' : 'gray'}
+                onClick={() => setCurrentView('prep')} 
+              />
+            )}
+            {config.modules?.huiles !== false && (
+              <Tile 
+                icon={Droplet} 
+                title={t('nav_oil')} 
+                alert={alerts.oil} 
+                status={dashboardStats?.oilDone ? t('status_done') : t('status_to_do')}
+                statusColor={dashboardStats?.oilDone ? 'green' : 'orange'}
+                onClick={() => setCurrentView('oil')} 
+              />
+            )}
+            {config.modules?.inventaire !== false && (
+              <Tile 
+                icon={ClipboardList} 
+                title={t('nav_inventaire')} 
+                status={t('btn_manage')}
+                onClick={() => setCurrentView('inventaire')} 
+              />
+            )}
             <Tile 
               icon={Archive} 
               title={t('nav_products')} 

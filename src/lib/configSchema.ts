@@ -45,10 +45,10 @@ export const ProduitConfigSchema = z.object({
 });
 
 export const RestaurantConfigSchema = z.object({
-  nom: z.string().default('Crousty Hub'),
+  nom: z.string().default('Hartmann Hub'),
   ville: z.string().default(''),
-  couleurPrimaire: z.string().default('#E91E8C'),
-  couleurSecondaire: z.string().default('#7B2FBE'),
+  couleurPrimaire: z.string().default('#004696'),
+  couleurSecondaire: z.string().default('#00A9E0'),
   logoMode: z.enum(['text', 'initials', 'icon', 'icon+text', 'icon+initials']).default('initials'),
   logoText: z.string().optional(),
   logoIcon: z.string().default('ChefHat'),
@@ -64,15 +64,22 @@ export const InventaireConfigSchema = z.object({
   envoiSuperieur: z.boolean().default(true)
 });
 
+export const CookingProductSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  active: z.boolean().default(true),
+  icon: z.string().optional()
+});
+
 export const ConfigSchema = z.object({
   version: z.string().optional().default('1.0'),
   exportedAt: z.string().optional(),
   pinHash: z.string().optional(),
   restaurant: RestaurantConfigSchema.default({ 
-    nom: 'Crousty Hub', 
+    nom: 'Hartmann Hub', 
     ville: '', 
-    couleurPrimaire: '#E91E8C', 
-    couleurSecondaire: '#7B2FBE',
+    couleurPrimaire: '#004696', 
+    couleurSecondaire: '#00A9E0',
     logoMode: 'initials',
     logoIcon: 'ChefHat',
     logoBackgroundStyle: 'round',
@@ -83,9 +90,12 @@ export const ConfigSchema = z.object({
   huiles: z.array(HuileConfigSchema).default([]),
   nettoyage: z.array(NettoyageConfigSchema).default([]),
   produits: z.array(ProduitConfigSchema).default([]),
+  cuisson: z.array(CookingProductSchema).default([]),
+  modules: z.record(z.string(), z.boolean()).default({}),
   inventaire: InventaireConfigSchema.default({ frequence: 'hebdomadaire', jourSemaine: 'lundi', rappelActif: true, envoiSuperieur: true })
 });
 
+export type CookingProductConfig = z.infer<typeof CookingProductSchema>;
 export type NettoyageTaskConfig = z.infer<typeof NettoyageConfigSchema>;
 export type ProduitConfig = z.infer<typeof ProduitConfigSchema>;
 export type TemperatureConfig = z.infer<typeof TemperatureConfigSchema>;
@@ -114,10 +124,10 @@ export const DEFAULT_CLEANING_TASKS: NettoyageTaskConfig[] = [
 export const DEFAULT_CONFIG: AppConfig = {
   version: '1.0',
   restaurant: {
-    nom: 'Crousty Hub',
+    nom: 'Hartmann Hub',
     ville: '',
-    couleurPrimaire: '#E91E8C',
-    couleurSecondaire: '#7B2FBE',
+    couleurPrimaire: '#004696',
+    couleurSecondaire: '#00A9E0',
     logoMode: 'initials',
     logoIcon: 'ChefHat',
     logoBackgroundStyle: 'round',
@@ -145,6 +155,21 @@ export const DEFAULT_CONFIG: AppConfig = {
   ],
   nettoyage: DEFAULT_CLEANING_TASKS,
   produits: [],
+  cuisson: [
+    { id: 'c-1', name: 'Tenders', icon: 'Drumstick', active: true },
+    { id: 'c-2', name: 'Poisson', icon: 'Fish', active: true }
+  ],
+  modules: {
+    reception: true,
+    traceabilite: true,
+    temperatures: true,
+    cuisson: true,
+    nettoyage: true,
+    dlc: true,
+    preparations: true,
+    inventaire: true,
+    huiles: true
+  },
   inventaire: {
     frequence: 'hebdomadaire',
     jourSemaine: 'lundi',
@@ -219,9 +244,17 @@ export function deepMergeWithDefaults(imported: any, defaults: AppConfig = DEFAU
     const res = mergeArrays(result.produits || [], imported.produits);
     result.produits = res.merged;
   }
+  if (imported.cuisson) {
+    const res = mergeArrays(result.cuisson || [], imported.cuisson);
+    result.cuisson = res.merged;
+  }
 
   if (imported.inventaire && typeof imported.inventaire === 'object') {
     result.inventaire = { ...defaults.inventaire, ...imported.inventaire };
+  }
+
+  if (imported.modules && typeof imported.modules === 'object') {
+    result.modules = { ...defaults.modules, ...imported.modules };
   }
 
   // Validate the merged object to ensure it fits the schema

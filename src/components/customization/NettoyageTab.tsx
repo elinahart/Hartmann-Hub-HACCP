@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { Sparkles, Edit2, Trash2, Plus, Calendar } from 'lucide-react';
+import { Sparkles, Edit2, Trash2, Plus, Calendar, Shield, Check, AlertTriangle } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { Button, Input, Label } from '../ui/LightUI';
 import { NettoyageTaskConfig } from '../../lib/configSchema';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../contexts/AuthContext';
 
 import { useNettoyage } from '../../providers/NettoyageProvider';
 
 export const NettoyageTab = () => {
   const { config, updateConfig } = useConfig();
+  const { currentUser } = useAuth();
+  const isManager = currentUser?.role === 'manager';
   const { taches, setTaches } = useNettoyage();
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState<'selected' | 'all' | null>(null);
+
   // Form state
   const [nom, setNom] = useState('');
   const [frequence, setFrequence] = useState('QUOTIDIEN');
@@ -71,6 +79,33 @@ export const NettoyageTab = () => {
     updateConfig({ nettoyage: newNettoyage });
     setTaches(newNettoyage);
     setConfirmDelete(null);
+    setSelectedIds(prev => prev.filter(v => v !== id));
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === nettoyage.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(nettoyage.map(t => t.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    let newNettoyage = [];
+    if (showBulkDeleteConfirm === 'selected') {
+      newNettoyage = nettoyage.filter(t => !selectedIds.includes(t.id));
+    }
+    updateConfig({ nettoyage: newNettoyage });
+    setTaches(newNettoyage);
+    setSelectedIds([]);
+    setShowBulkDeleteConfirm(null);
+    setIsSelectionMode(false);
   };
 
   return (
@@ -83,6 +118,78 @@ export const NettoyageTab = () => {
           </Button>
         )}
       </div>
+
+      {isManager && nettoyage.length > 0 && !editingId && (
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-[10px] uppercase tracking-widest">
+              <Shield size={14} className="text-amber-500" />
+              Gestion
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedIds([]);
+                }}
+                className={cn(
+                  "h-7 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                  isSelectionMode ? "bg-amber-200 text-amber-900" : "bg-white text-gray-500 border border-gray-200"
+                )}
+              >
+                {isSelectionMode ? 'Annuler' : 'Sélectionner'}
+              </Button>
+              <Button 
+                onClick={() => setShowBulkDeleteConfirm('all')}
+                className="h-7 px-3 bg-red-100 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+                variant="ghost"
+              >
+                Tout supprimer
+              </Button>
+            </div>
+          </div>
+
+          {isSelectionMode && (
+            <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-amber-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleSelectAll}
+                  className="w-5 h-5 rounded border-2 border-amber-400 flex items-center justify-center transition-colors"
+                >
+                  {selectedIds.length === nettoyage.length && <Check size={14} className="text-amber-500 font-black" />}
+                </button>
+                <span className="text-[10px] font-black text-amber-900 uppercase">{selectedIds.length} sélectionné(s)</span>
+              </div>
+              <Button 
+                disabled={selectedIds.length === 0}
+                onClick={() => setShowBulkDeleteConfirm('selected')}
+                className="h-7 px-3 bg-red-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-200 disabled:opacity-50"
+              >
+                Supprimer selection
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-black text-gray-900 leading-tight">Voulez-vous vraiment continuer ?</h3>
+              <p className="text-sm text-gray-500 font-medium">
+                {showBulkDeleteConfirm === 'all' 
+                  ? "Cette action supprimera tout le plan de nettoyage."
+                  : `Cette action supprimera ${selectedIds.length} tâche(s).`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowBulkDeleteConfirm(null)} variant="ghost" className="flex-1 font-black text-[10px] uppercase">Annuler</Button>
+              <Button onClick={handleBulkDelete} className="flex-1 bg-red-500 font-black text-[10px] uppercase">Supprimer</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {editingId === 'NEW' && (
@@ -131,12 +238,18 @@ export const NettoyageTab = () => {
         )}
 
         {nettoyage.map((t) => (
-          <div key={t.id} className={cn(
-            "border border-gray-100 rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow",
-            !t.actif && "opacity-50 grayscale"
-          )}>
+          <div 
+            key={t.id} 
+            onClick={() => isSelectionMode && toggleSelection(t.id)}
+            className={cn(
+              "border rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer",
+              !t.actif && "opacity-50 grayscale",
+              editingId === t.id ? "border-emerald-500 shadow-lg shadow-emerald-50" : "border-gray-100",
+              selectedIds.includes(t.id) && "border-amber-400 bg-amber-50/20"
+            )}
+          >
             {editingId === t.id ? (
-              <div className="p-6 bg-gray-50 space-y-5 animate-in slide-in-from-top-2">
+              <div className="p-6 bg-gray-50 space-y-5 animate-in slide-in-from-top-2" onClick={e => e.stopPropagation()}>
                 <h4 className="font-black text-gray-800">Modifier la tâche</h4>
                 <div className="space-y-4">
                   <div>
@@ -174,12 +287,20 @@ export const NettoyageTab = () => {
                 {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-2 rounded-md">{error}</p>}
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1 h-12" onClick={() => setEditingId(null)}>Annuler</Button>
-                  <Button onClick={handleSave} className="flex-1 h-12 bg-emerald-600 border-none">Enregistrer</Button>
+                  <Button onClick={handleSave} className="flex-1 h-12 bg-emerald-600 border-none text-white">Enregistrer</Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between p-4 px-6">
                 <div className="flex items-center gap-4">
+                  {isSelectionMode && (
+                    <div className={cn(
+                      "w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors",
+                      selectedIds.includes(t.id) ? "bg-amber-500 border-amber-500" : "border-gray-200 bg-white"
+                    )}>
+                      {selectedIds.includes(t.id) && <Check size={12} className="text-white" />}
+                    </div>
+                  )}
                   <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
                     <Sparkles size={22} />
                   </div>
@@ -197,14 +318,16 @@ export const NettoyageTab = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 active:text-crousty-purple bg-gray-50 active:bg-crousty-purple/10 rounded-xl transition-all">
-                    <Edit2 size={20} />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(t.id); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 active:text-red-500 bg-gray-50 active:bg-red-50 rounded-xl transition-all">
-                    <Trash2 size={20} />
-                  </button>
-                </div>
+                {!isSelectionMode && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-2 text-gray-400 hover:text-crousty-purple hover:bg-purple-50 rounded-xl transition-all">
+                      <Edit2 size={20} />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(t.id); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -249,4 +372,5 @@ export const NettoyageTab = () => {
     </div>
   );
 };
+
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Smartphone, Upload, QrCode, ClipboardList, Thermometer, CheckCircle2, AlertTriangle, RefreshCw, Eye, Flame, Package, Droplets, Droplet, Trash2 } from 'lucide-react';
+import { X, Smartphone, Upload, QrCode, ClipboardList, Thermometer, CheckCircle2, AlertTriangle, RefreshCw, Eye, Flame, Package, Droplets, Droplet, Trash2, Shield } from 'lucide-react';
 import { Button } from '../ui/LightUI';
 import { QRCodeSVG } from 'qrcode.react';
 import JSZip from 'jszip';
@@ -477,6 +477,7 @@ export const MobileSyncModal = ({ isOpen, onClose }: MobileSyncModalProps) => {
                   <div className="p-6 bg-white rounded-3xl shadow-xl border border-gray-100">
                     <QRCodeSVG value={sessionUrl} size={240} level="H" includeMargin={false} />
                   </div>
+
                   <div>
                     <h4 className="font-black text-xl text-gray-800 mb-2">Code {sessionName}</h4>
                     <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">

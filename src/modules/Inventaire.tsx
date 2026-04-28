@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, Button } from '../components/ui/LightUI';
 import { InventoryEntry, InventoryProduct, InventoryItemDetail } from '../types';
 import { getStoredData, setStoredData } from '../lib/db';
-import { Trash2, Check, X, ChevronDown, ChevronUp, FileText, Settings, Search, Package, ChevronRight, AlertTriangle, Activity, Calendar } from 'lucide-react';
+import { Trash2, Check, X, ChevronDown, ChevronUp, FileText, Settings, Search, Package, ChevronRight, AlertTriangle, Activity, Calendar, Upload, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, differenceInDays } from 'date-fns';
 
 import { GererLesProduits, ICONS_MAP, getSmartIcon, DEFAULT_CATEGORIES } from '../components/GererLesProduits';
 
@@ -55,6 +55,7 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
   const [activeFilter, setActiveFilter] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRupturesOnly, setShowRupturesOnly] = useState(false);
+  const [isSmartMode, setIsSmartMode] = useState(false);
   const isDirty = Object.keys(quantities).length > 0;
   
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -79,6 +80,74 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
       setStoredData('crousty_inventory_draft', quantities);
     }
   }, [quantities]);
+
+  const smartEstimations = useMemo(() => {
+    if (entries.length < 2) return null;
+    
+    const rec = getStoredData<any[]>('crousty_receptions_v3', []).filter((r: any) => !r.supprime).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Calculate average consumption over the last several inventories to smooth
+    const selectedInventories = entries.slice(0, 3); 
+    const newest = selectedInventories[0]; // the last done inventory
+    const oldest = selectedInventories[selectedInventories.length - 1]; // up to 3 behind
+
+    const dNewest = new Date(newest.date).getTime();
+    const dOldest = new Date(oldest.date).getTime();
+    const daysDiffHist = Math.max(1, differenceInDays(dNewest, dOldest));
+    const daysSinceLast = Math.max(0, differenceInDays(Date.now(), dNewest));
+
+    // Deliveries inside historical period
+    const histDeliveries = rec.filter(r => {
+      const rd = new Date(r.date).getTime();
+      return rd >= dOldest && rd <= dNewest;
+    });
+
+    // Deliveries since last inventory
+    const recentDeliveries = rec.filter(r => {
+      const rd = new Date(r.date).getTime();
+      return rd > dNewest;
+    });
+
+    const getDelivUnits = (arr: any[], prodName: string) => {
+      let total = 0;
+      arr.forEach(r => {
+        r.lignes?.forEach((l: any) => {
+          if (l.produit === prodName) {
+            const num = parseInt(l.quantite);
+            if (!isNaN(num)) {
+               const isCarton = l.quantite.toLowerCase().includes('carton') || l.quantite.toLowerCase().includes('colis');
+               total += isCarton ? num * 5 : num;
+            }
+          }
+        });
+      });
+      return total;
+    };
+
+    const calcTotalUnits = (cat: string, name: string, items: any) => {
+      const detail = items[cat]?.[name];
+      if (!detail || detail.na) return 0;
+      return parseInt(detail.units || '0') + (parseInt(detail.cartons || '0') * 5);
+    };
+
+    const est: Record<string, number> = {};
+
+    for (const p of products) {
+      const stockOldest = calcTotalUnits(p.category, p.name, oldest.items);
+      const stockNewest = calcTotalUnits(p.category, p.name, newest.items);
+      const dHist = getDelivUnits(histDeliveries, p.name);
+      
+      const consumption = stockOldest + dHist - stockNewest;
+      const avgPerDay = consumption > 0 ? consumption / daysDiffHist : 0;
+
+      const dRec = getDelivUnits(recentDeliveries, p.name);
+      
+      let estimated = stockNewest + dRec - (avgPerDay * daysSinceLast);
+      est[p.name] = Math.max(0, Math.round(estimated));
+    }
+    
+    return est;
+  }, [entries, products]);
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
@@ -155,6 +224,8 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
     setStoredData('crousty_inventory', updated);
     setStoredData('crousty_inventory_draft', {});
     setQuantities({});
+    setShowRupturesOnly(false);
+    setIsSmartMode(false);
     
     setError('');
   };
@@ -164,6 +235,72 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
     setEntries(updated);
     setStoredData('crousty_inventory', updated);
     setDeleteId(null);
+  };
+
+  const importExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const { read, utils } = await import('xlsx');
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = utils.sheet_to_json<any>(firstSheet);
+
+        const entriesByDate: Record<string, InventoryEntry> = {};
+
+        rows.forEach(row => {
+           const d = row['Date'] || row['date'];
+           const pName = row['Produit'] || row['produit'];
+           const q = row['Quantite'] || row['Quantité'] || row['quantite'] || '0';
+           const resp = row['Responsable'] || row['responsable'] || 'Import';
+           
+           if (!d || !pName) return;
+
+           const finalDate = typeof d === 'number' 
+             ? new Date((d - (25567 + 2)) * 86400 * 1000).toISOString() 
+             : new Date(d).toISOString();
+             
+           const dateKey = finalDate.split('T')[0];
+           const key = `${dateKey}-${resp}`;
+           
+           if (!entriesByDate[key]) {
+             entriesByDate[key] = {
+               id: `imp_${Date.now()}_${Math.random()}`,
+               date: finalDate,
+               responsable: resp,
+               items: {}
+             };
+           }
+           
+           const productConf = products.find(prod => prod.name.toLowerCase() === pName.toLowerCase());
+           const cat = productConf ? productConf.category : 'Autres';
+           
+           if (!entriesByDate[key].items[cat]) entriesByDate[key].items[cat] = {};
+           
+           entriesByDate[key].items[cat][pName] = {
+              units: String(q),
+              cartons: '0',
+              na: false
+           };
+        });
+
+        const newOldEntries = Object.values(entriesByDate);
+        if (newOldEntries.length > 0) {
+           const combined = [...entries, ...newOldEntries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+           setEntries(combined);
+           setStoredData('crousty_inventory', combined);
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Erreur lors de l'import. Vérifiez le format du fichier (Date, Produit, Quantite, Responsable).");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
   };
 
   const formatItemValue = (item: InventoryItemDetail) => {
@@ -418,15 +555,46 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
               ))}
             </div>
             
-            <label className="flex items-center gap-2 cursor-pointer bg-orange-50 text-orange-700 px-4 py-2 rounded-full border border-orange-200 hover:bg-orange-100 transition-colors shrink-0">
-               <input 
-                 type="checkbox" 
-                 checked={showRupturesOnly} 
-                 onChange={e => setShowRupturesOnly(e.target.checked)}
-                 className="accent-orange-600 w-4 h-4"
-               />
-               <span className="text-sm font-bold flex items-center gap-1">⚠️ Afficher uniquement les ruptures</span>
-            </label>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer bg-white text-gray-700 px-4 py-2 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
+                   <input 
+                     type="checkbox" 
+                     checked={isSmartMode} 
+                     onChange={e => {
+                       const checked = e.target.checked;
+                       setIsSmartMode(checked);
+                       if (checked && smartEstimations) {
+                         const newQuantities = { ...quantities };
+                         let changed = false;
+                         products.forEach(p => {
+                           const estimated = smartEstimations[p.name];
+                           if (estimated !== undefined && newQuantities[p.category]?.[p.name] === undefined) {
+                             if (!newQuantities[p.category]) newQuantities[p.category] = {};
+                             newQuantities[p.category][p.name] = { units: String(estimated), cartons: '0', na: false };
+                             changed = true;
+                           }
+                         });
+                         if (changed) {
+                           setQuantities(newQuantities);
+                         }
+                       }
+                     }}
+                     disabled={entries.length < 2}
+                     className="accent-crousty-purple w-4 h-4 disabled:opacity-50"
+                   />
+                   <span className="text-sm font-bold flex items-center gap-1"><Brain size={14} className="text-crousty-purple"/> Mode intelligent</span>
+                </label>
+                
+                <label className="flex items-center gap-2 cursor-pointer bg-orange-50 text-orange-700 px-4 py-2 rounded-full border border-orange-200 hover:bg-orange-100 transition-colors shrink-0">
+                   <input 
+                     type="checkbox" 
+                     checked={showRupturesOnly} 
+                     onChange={e => setShowRupturesOnly(e.target.checked)}
+                     className="accent-orange-600 w-4 h-4"
+                   />
+                   <span className="text-sm font-bold flex items-center gap-1 hidden sm:flex">⚠️ Afficher uniquement les ruptures</span>
+                </label>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -456,6 +624,32 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
                             const isLow = !itemDetail.na && totalNum <= product.minThreshold;
                             const style = getCategorieStyle(category);
                             const IconComp = ICONS_MAP[product.icon as keyof typeof ICONS_MAP] || Package;
+                            
+                            const estimated = smartEstimations?.[product.name];
+                            const showEstimation = isSmartMode && estimated !== undefined && !itemDetail.na;
+                            
+                            let estimationColor = 'text-gray-400';
+                            let estimationBg = 'bg-gray-100/50';
+                            let estimationDiff = 0;
+                            
+                            if (showEstimation) {
+                               const isItemDirty = !!quantities[category]?.[product.name];
+                               const typedTotal = isItemDirty ? totalNum : null;
+                               
+                               if (typedTotal !== null) {
+                                  estimationDiff = typedTotal - estimated;
+                                  if (Math.abs(estimationDiff) <= 1) {
+                                      estimationColor = 'text-emerald-600';
+                                      estimationBg = 'bg-emerald-50';
+                                  } else if (Math.abs(estimationDiff) <= 3) {
+                                      estimationColor = 'text-orange-600';
+                                      estimationBg = 'bg-orange-50';
+                                  } else {
+                                      estimationColor = 'text-red-600';
+                                      estimationBg = 'bg-red-50';
+                                  }
+                               }
+                            }
                             
                             return (
                               <div 
@@ -498,6 +692,20 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
                                     </div>
                                   )}
                                 </div>
+                                
+                                {showEstimation && (
+                                   <div className={`mt-2 flex items-center justify-between text-[11px] font-bold px-2 py-1 rounded-lg ${estimationBg}`}>
+                                      <span className="text-gray-500 uppercase tracking-widest text-[9px]">A.I. Estimé</span>
+                                      <span className={`flex items-center gap-1 ${estimationColor}`}>
+                                         {estimated} u.
+                                         {!!quantities[category]?.[product.name] && (
+                                            <span className="text-[10px] ml-1">
+                                               (Écart: {estimationDiff > 0 ? '+' : ''}{estimationDiff})
+                                            </span>
+                                         )}
+                                      </span>
+                                   </div>
+                                )}
                                 
                                 <div className={`grid grid-cols-2 gap-2 sm:gap-4 mt-1 ${itemDetail.na ? 'pointer-events-none' : ''}`}>
                                   <div className="flex flex-col gap-1">
@@ -543,7 +751,14 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
       </motion.div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-500 uppercase">Historique</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-500 uppercase">Historique</h3>
+          <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl cursor-pointer transition-colors border border-gray-200">
+            <Upload size={16} />
+            <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Importer XLS</span>
+            <input type="file" accept=".xls,.xlsx" onChange={importExcel} className="hidden" />
+          </label>
+        </div>
         <AnimatePresence>
           {entries.map((e: InventoryEntry, idx: number) => {
             let totalItems = 0;

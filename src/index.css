@@ -1,17 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
   --color-crousty-pink: var(--color-primary);
   --color-crousty-purple: var(--color-secondary);
-  --color-crousty-dark: #1A0B2E;
-  --color-crousty-light: #f8fafc;
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --color-crousty-dark: #001A33;
+  --color-crousty-light: #f1f5f9;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --color-primary: #E91E8C;
-  --color-secondary: #7B2FBE;
+  --color-primary: #004696;
+  --color-secondary: #00A9E0;
 }
 
 html, body {

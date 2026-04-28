@@ -29,28 +29,6 @@ export interface EtatApp {
 
 // Composant Modal Générique
 export function Modal({ isOpen, onClose, titre, icon, children }: { isOpen: boolean, onClose: () => void, titre: string, icon?: React.ReactNode, children: React.ReactNode }) {
-  useEffect(() => {
-    const el = document.getElementById('app-wrapper');
-    if (!el) return;
-    if (isOpen) {
-      el.style.transform = 'scale(0.97)';
-      el.style.transformOrigin = 'center';
-      el.style.transition = 'transform 0.3s ease';
-      el.style.borderRadius = '24px';
-      el.style.overflow = 'hidden';
-    } else {
-      el.style.transform = '';
-      el.style.borderRadius = '';
-      el.style.overflow = '';
-    }
-
-    return () => {
-      el.style.transform = '';
-      el.style.borderRadius = '';
-      el.style.overflow = '';
-    };
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return createPortal(
@@ -509,14 +487,14 @@ function ModaleNavigation({ destination, onClose, onNaviguer, children }: any) {
 
 // Configuration dynamique par défaut des zones de températures
 const ZONES_TEMPERATURE = [
-  { id: 'Négatif', nom: '❄️ NÉGATIF', type: 'negatif', seuilMax: -18 },
-  { id: 'Positif', nom: '🌡️ POSITIF', type: 'positif', seuilMin: 0, seuilMax: 4 },
-  { id: 'Frigo Cuisine', nom: '🧊 FRIGO CUISINE', type: 'positif', seuilMin: 0, seuilMax: 4 },
-  { id: 'Congèle Cuisine', nom: '❄️ CONGÈLE CUISINE', type: 'negatif', seuilMax: -18 },
-  { id: 'Saladette Sauces', nom: '🥗 SALADETTE SAUCES', type: 'positif', seuilMin: 0, seuilMax: 4 },
-  { id: 'Saladette Desserts', nom: '🍰 SALADETTE DESSERTS', type: 'positif', seuilMin: 0, seuilMax: 4 },
-  { id: 'Frigo Boisson 1', nom: '🥤 FRIGO BOISSON 1', type: 'positif', seuilMin: 0, seuilMax: 8 },
-  { id: 'Frigo Boisson DADA', nom: '🥤 FRIGO BOISSON DADA', type: 'positif', seuilMin: 0, seuilMax: 8 }
+  { id: 'Négatif', nom: 'NÉGATIF', type: 'negatif', seuilMax: -18 },
+  { id: 'Positif', nom: 'POSITIF', type: 'positif', seuilMin: 0, seuilMax: 4 },
+  { id: 'Frigo Cuisine', nom: 'FRIGO CUISINE', type: 'positif', seuilMin: 0, seuilMax: 4 },
+  { id: 'Congèle Cuisine', nom: 'CONGÈLE CUISINE', type: 'negatif', seuilMax: -18 },
+  { id: 'Saladette Sauces', nom: 'SALADETTE SAUCES', type: 'positif', seuilMin: 0, seuilMax: 4 },
+  { id: 'Saladette Desserts', nom: 'SALADETTE DESSERTS', type: 'positif', seuilMin: 0, seuilMax: 4 },
+  { id: 'Frigo Boisson 1', nom: 'FRIGO BOISSON 1', type: 'positif', seuilMin: 0, seuilMax: 8 },
+  { id: 'Frigo Boisson DADA', nom: 'FRIGO BOISSON DADA', type: 'positif', seuilMin: 0, seuilMax: 8 }
 ];
 
 function getStatutZone(valeur: number | null, zone: any) {

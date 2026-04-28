@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChefHat, Package, Thermometer, Flame, Sparkles, Tag, Droplet, ClipboardList, Archive, LogOut, Settings, ChevronLeft, ChevronRight, Home, X, Smartphone } from 'lucide-react';
+import { ChefHat, Package, Thermometer, Flame, Sparkles, Tag, Droplet, ClipboardList, Archive, LogOut, Settings, ChevronLeft, ChevronRight, Home, X, Smartphone, QrCode, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { getInitials } from '../lib/utils';
@@ -25,16 +25,19 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
 
   const navItems = [
     { id: 'dashboard', label: t('nav_dashboard'), icon: Home },
-    { id: 'receptions', label: t('nav_receptions'), icon: Package },
-    { id: 'tracabilite', label: t('nav_tracabilite'), icon: Sparkles },
-    { id: 'temperatures', label: t('nav_temperatures'), icon: Thermometer },
-    { id: 'viandes', label: t('nav_viandes'), icon: Flame },
-    { id: 'cleaning', label: t('nav_cleaning'), icon: Sparkles },
-    { id: 'desserts', label: t('nav_desserts'), icon: Tag },
-    { id: 'prep', label: t('nav_prep'), icon: ChefHat },
-    { id: 'oil', label: t('nav_oil'), icon: Droplet },
-    { id: 'inventaire', label: t('nav_inventaire'), icon: ClipboardList },
-    { id: 'sessions-mobiles', label: t('nav_mobile_sessions'), icon: Smartphone },
+    ...(config.modules?.reception !== false ? [{ id: 'receptions', label: t('nav_receptions'), icon: Package }] : []),
+    ...(config.modules?.traceabilite !== false ? [{ id: 'tracabilite', label: t('nav_tracabilite'), icon: QrCode }] : []),
+    ...(config.modules?.temperatures !== false ? [{ id: 'temperatures', label: t('nav_temperatures'), icon: Thermometer }] : []),
+    ...(config.modules?.cuisson !== false ? [{ id: 'viandes', label: t('nav_viandes'), icon: Flame }] : []),
+    ...(config.modules?.nettoyage !== false ? [{ id: 'cleaning', label: t('nav_cleaning'), icon: Sparkles }] : []),
+    ...(config.modules?.dlc !== false ? [{ id: 'desserts', label: t('nav_desserts'), icon: Tag }] : []),
+    ...(config.modules?.preparations !== false ? [{ id: 'prep', label: t('nav_prep'), icon: ChefHat }] : []),
+    ...(config.modules?.huiles !== false ? [{ id: 'oil', label: t('nav_oil'), icon: Droplet }] : []),
+    ...(config.modules?.inventaire !== false ? [
+      { id: 'inventaire', label: t('nav_inventaire'), icon: ClipboardList },
+      ...(currentUser?.role === 'manager' ? [{ id: 'inventaire-intelligent', label: 'A.I. Manager', icon: Brain }] : [])
+    ] : []),
+    ...(config.modules?.sessions !== false ? [{ id: 'sessions-mobiles', label: t('nav_mobile_sessions'), icon: Smartphone }] : []),
     ...(currentUser?.role !== 'Invité' ? [{ id: 'products', label: t('nav_products'), icon: Archive }] : []),
   ];
 
@@ -79,7 +82,7 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
                   isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-4'
                 } ${
                   isActive 
-                    ? 'bg-crousty-purple text-white shadow-md sidebar-item-active' 
+                    ? 'bg-[var(--color-primary)] text-white shadow-md sidebar-item-active' 
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
                 }`}
               >
@@ -92,7 +95,7 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
 
         <div className={`p-4 border-t border-gray-100 flex flex-col gap-2`}>
           <div className={`flex items-center ${isCollapsed && !isMobileOpen ? 'md:justify-center' : 'gap-3 px-4'} py-2 bg-gray-50 rounded-xl mb-2`}>
-            <div className="w-8 h-8 bg-crousty-purple/10 text-crousty-purple rounded-full flex items-center justify-center font-bold shrink-0">
+            <div className="w-8 h-8 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center font-bold shrink-0">
               {currentUser ? getInitials(currentUser.name) : ''}
             </div>
             {(!isCollapsed || isMobileOpen) && (

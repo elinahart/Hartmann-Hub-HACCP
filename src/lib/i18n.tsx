@@ -13,7 +13,7 @@ const translations = {
     nav_viandes: "Cuisson Alimentaire",
     nav_cleaning: "Plan de nettoyage",
     nav_desserts: "Étiquettes DLC",
-    nav_prep: "Préparations",
+    nav_prep: "Préparation",
     nav_oil: "Huiles",
     nav_inventaire: "Inventaire",
     nav_mobile_sessions: "Sessions Mobiles",

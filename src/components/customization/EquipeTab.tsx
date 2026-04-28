@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Users, Trash2, Edit2, ToggleLeft, ToggleRight, X, AlertTriangle, UserCircle, GripVertical, Eye } from 'lucide-react';
+import { UserPlus, Users, Trash2, Edit2, ToggleLeft, ToggleRight, X, AlertTriangle, UserCircle, GripVertical, Eye, Shield, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button, Input, Label, Select } from '../ui/LightUI';
 import { getInitials, getCouleurProfil, cn } from '../../lib/utils';
@@ -7,8 +7,14 @@ import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { MembreEquipe } from '../../types';
 
 export const EquipeTab = () => {
-  const { users, addUser, deleteUser, updateUser, setUsers } = useAuth();
+  const { users, addUser, deleteUser, updateUser, setUsers, currentUser } = useAuth();
+  const isManager = currentUser?.role === 'manager';
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState<'selected' | 'all' | null>(null);
+
   // New user form
   const [newName, setNewName] = useState('');
   const [newInitials, setNewInitials] = useState('');
@@ -58,6 +64,38 @@ export const EquipeTab = () => {
 
   const handleUpdateMember = (u: MembreEquipe) => {
     updateUser(u);
+  };
+
+  const toggleSelection = (id: string) => {
+    if (users.find(u => u.id === id)?.name === 'Manager') {
+      alert("Le compte Manager principal ne peut pas être sélectionné pour modification/suppression de masse.");
+      return;
+    }
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const selectableUsers = users.filter(u => u.name !== 'Manager');
+    if (selectedIds.length === selectableUsers.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(selectableUsers.map(u => u.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (showBulkDeleteConfirm === 'all') {
+      // Keep only original manager
+      const manager = users.find(u => u.name === 'Manager');
+      setUsers(manager ? [manager] : []);
+    } else if (showBulkDeleteConfirm === 'selected') {
+      setUsers(users.filter(u => !selectedIds.includes(u.id)));
+    }
+    setSelectedIds([]);
+    setShowBulkDeleteConfirm(null);
+    setIsSelectionMode(false);
   };
 
   return (
@@ -143,6 +181,78 @@ export const EquipeTab = () => {
         </div>
       </section>
 
+      {isManager && users.length > 1 && (
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-[10px] uppercase tracking-widest">
+              <Shield size={14} className="text-amber-500" />
+              Equipe Manager
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedIds([]);
+                }}
+                className={cn(
+                  "h-7 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest",
+                  isSelectionMode ? "bg-amber-200 text-amber-900" : "bg-white text-gray-500 border border-gray-200"
+                )}
+              >
+                {isSelectionMode ? 'Quitter' : 'Selectionner'}
+              </Button>
+              <Button 
+                onClick={() => setShowBulkDeleteConfirm('all')}
+                className="h-7 px-3 bg-red-100 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+                variant="ghost"
+              >
+                Vider l'équipe
+              </Button>
+            </div>
+          </div>
+
+          {isSelectionMode && (
+            <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-amber-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleSelectAll}
+                  className="w-5 h-5 rounded border-2 border-amber-400 flex items-center justify-center transition-colors"
+                >
+                  {selectedIds.length === users.filter(u => u.name !== 'Manager').length && selectedIds.length > 0 && <Check size={14} className="text-amber-500 font-black" />}
+                </button>
+                <span className="text-[10px] font-black text-amber-900 uppercase">{selectedIds.length} sélectionné(s)</span>
+              </div>
+              <Button 
+                disabled={selectedIds.length === 0}
+                onClick={() => setShowBulkDeleteConfirm('selected')}
+                className="h-7 px-4 bg-red-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest"
+              >
+                Supprimer selection
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-black text-gray-900 leading-tight">Voulez-vous continuer ?</h3>
+              <p className="text-sm text-gray-500 font-medium">
+                {showBulkDeleteConfirm === 'all' 
+                  ? "Cette action supprimera tous les membres sauf le Manager principal."
+                  : `Cette action supprimera les ${selectedIds.length} membres sélectionnés.`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowBulkDeleteConfirm(null)} variant="ghost" className="flex-1 font-black text-[10px] uppercase">Annuler</Button>
+              <Button onClick={handleBulkDelete} className="flex-1 bg-red-500 font-black text-[10px] uppercase text-white">Oui, supprimer</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Liste des membres identique à SettingsPanel */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-2">
@@ -161,18 +271,32 @@ export const EquipeTab = () => {
               <Reorder.Item 
                 key={u.id} 
                 value={u}
-                dragListener={!isEditing}
+                dragListener={!isEditing && !isSelectionMode}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className={cn(
-                  "group relative flex flex-col p-4 bg-white border border-gray-100 rounded-3xl shadow-sm transition-all",
-                  !u.actif && "opacity-50 grayscale",
-                  isEditing && "ring-2 ring-crousty-pink border-transparent bg-gray-50/30"
-                )}>
+                <div 
+                  onClick={() => isSelectionMode && toggleSelection(u.id)}
+                  className={cn(
+                    "group relative flex flex-col p-4 bg-white border border-gray-100 rounded-3xl shadow-sm transition-all cursor-pointer",
+                    !u.actif && "opacity-50 grayscale",
+                    isEditing && "ring-2 ring-crousty-pink border-transparent bg-gray-50/30",
+                    selectedIds.includes(u.id) && "border-amber-400 bg-amber-50/20 shadow-lg"
+                  )}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <GripVertical className="text-gray-200 cursor-grab active:cursor-grabbing group-hover:text-gray-400" size={20} />
+                      {isSelectionMode && u.name !== 'Manager' && (
+                        <div className={cn(
+                          "w-5 h-5 rounded-lg border-2 shrink-0 flex items-center justify-center transition-colors",
+                          selectedIds.includes(u.id) ? "bg-amber-500 border-amber-500" : "border-gray-200 bg-white"
+                        )}>
+                          {selectedIds.includes(u.id) && <Check size={12} className="text-white" />}
+                        </div>
+                      )}
+                      {!isSelectionMode && (
+                        <GripVertical className="text-gray-200 cursor-grab active:cursor-grabbing group-hover:text-gray-400" size={20} />
+                      )}
                       
                       <div 
                         className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md shrink-0"
@@ -192,33 +316,35 @@ export const EquipeTab = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button 
-                        onClick={() => handleToggleActif(u)}
-                        className={cn("p-2 transition-colors", u.actif ? "text-green-500" : "text-gray-300")}
-                      >
-                        {u.actif ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                      </button>
-                      <button 
-                        onClick={() => setEditingUserId(isEditing ? null : u.id)}
-                        className={cn("p-2 transition-colors", isEditing ? "text-crousty-purple" : "text-gray-300 hover:text-gray-600")}
-                      >
-                        {isEditing ? <X size={20} /> : <Eye size={20} />}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (u.name === 'Manager') {
-                            alert("Le compte Manager principal ne peut pas être supprimé.");
-                            return;
-                          }
-                          setConfirmDeleteUserId(u.id);
-                        }} 
-                        className="p-2 text-gray-200 hover:text-red-500 transition-colors"
-                        style={{ minWidth: 44, minHeight: 44 }}
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+                    {!isSelectionMode && (
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <button 
+                          onClick={() => handleToggleActif(u)}
+                          className={cn("p-2 transition-colors", u.actif ? "text-green-500" : "text-gray-300")}
+                        >
+                          {u.actif ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                        </button>
+                        <button 
+                          onClick={() => setEditingUserId(isEditing ? null : u.id)}
+                          className={cn("p-2 transition-colors", isEditing ? "text-crousty-purple" : "text-gray-300 hover:text-gray-600")}
+                        >
+                          {isEditing ? <X size={20} /> : <Eye size={20} />}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (u.name === 'Manager') {
+                              alert("Le compte Manager principal ne peut pas être supprimé.");
+                              return;
+                            }
+                            setConfirmDeleteUserId(u.id);
+                          }} 
+                          className="p-2 text-gray-200 hover:text-red-500 transition-colors"
+                          style={{ minWidth: 44, minHeight: 44 }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <AnimatePresence>
@@ -228,6 +354,7 @@ export const EquipeTab = () => {
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
+                        onClick={e => e.stopPropagation()}
                       >
                         <div className="pt-4 mt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
                           <div>
@@ -295,4 +422,5 @@ export const EquipeTab = () => {
     </div>
   );
 };
+
 

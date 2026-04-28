@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Search, LayoutGrid, List, X, Crown, ArrowRight, Smartphone } from 'lucide-react';
+import { ChevronLeft, Search, LayoutGrid, List, X, Crown, ArrowRight, Smartphone, Shield } from 'lucide-react';
 import { getInitials, getCouleurProfil, cn } from '../lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MembreEquipe } from '../types';
@@ -200,8 +200,8 @@ export const LoginScreen = () => {
               <div className="w-20 h-20 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-[var(--color-primary)]/10 mb-6 ring-8 ring-white">
                 CG
               </div>
-              <h1 className="text-4xl font-black text-gray-800 tracking-tighter mb-1">Bienvenue</h1>
-              <p className="text-gray-400 font-bold text-sm tracking-tight">Sélectionnez votre profil</p>
+              <h1 className="text-4xl font-black text-gray-800 tracking-tighter mb-1">Accès Équipe</h1>
+              <p className="text-gray-400 font-bold text-sm tracking-tight">Utilisez votre code PIN pour accéder</p>
             </div>
 
             {/* View Toggle & Search Minimal */}

@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, Edit2, Trash2, Plus, Clock, Search, XCircle } from 'lucide-react';
+import { BookOpen, Edit2, Trash2, Plus, Clock, Search, XCircle, Shield, Check, AlertTriangle } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { Button, Input, Label } from '../ui/LightUI';
 import { ProductDef } from '../../types';
 import { getIconeCategorie, CATEGORIES_CONFIG } from '../../lib/categoriesIcones';
 import { useCatalogue } from '../../providers/CatalogueProvider';
+import { useAuth } from '../../contexts/AuthContext';
+import { cn } from '../../lib/utils';
 
 const CATEGORY_ORDER = [
   'Surgelés / Congelés',
@@ -24,9 +26,16 @@ const getCategoryOrder = (cat: string) => {
 
 export const ProduitsTab = () => {
   const { config, updateConfig } = useConfig();
+  const { currentUser } = useAuth();
+  const isManager = currentUser?.role === 'manager';
   const { produits, setProduits } = useCatalogue();
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState<'selected' | 'all' | null>(null);
+
   // Filtres
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('Toutes');
@@ -94,6 +103,32 @@ export const ProduitsTab = () => {
   const handleDelete = (id: string) => {
     setProduits(produits.filter((p: ProductDef) => p.id !== id));
     setConfirmDelete(null);
+    setSelectedIds(prev => prev.filter(v => v !== id));
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (visibleIds: string[]) => {
+    if (selectedIds.length >= visibleIds.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(visibleIds);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (showBulkDeleteConfirm === 'all') {
+      setProduits([]);
+    } else if (showBulkDeleteConfirm === 'selected') {
+      setProduits(produits.filter(p => !selectedIds.includes(p.id)));
+    }
+    setSelectedIds([]);
+    setShowBulkDeleteConfirm(null);
+    setIsSelectionMode(false);
   };
 
   const categories = Object.keys(CATEGORIES_CONFIG);
@@ -105,6 +140,8 @@ export const ProduitsTab = () => {
       const matchCat = selectedFilterCategory === 'Toutes' || p.category === selectedFilterCategory;
       return matchSearch && matchCat;
     });
+
+    const visibleIds = filtered.map(p => p.id);
 
     const grouped = filtered.reduce((acc, current) => {
       const cat = current.category || 'Autres';
@@ -119,7 +156,7 @@ export const ProduitsTab = () => {
       grouped[c].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     });
 
-    return { grouped, sortedCategories };
+    return { grouped, sortedCategories, visibleIds };
   }, [produits, searchQuery, selectedFilterCategory]);
 
   const renderProductForm = () => (
@@ -191,10 +228,82 @@ export const ProduitsTab = () => {
       {!editingId && (
         <button 
           onClick={handleCreate} 
-          className="fixed bottom-6 right-6 md:bottom-12 md:right-12 w-16 h-16 bg-crousty-purple text-white rounded-full flex items-center justify-center shadow-2xl shadow-crousty-purple/30 hover:scale-105 active:scale-95 transition-all z-[300]"
+          className="fixed bottom-6 right-6 md:bottom-12 md:right-12 w-16 h-16 bg-crousty-purple text-white rounded-full flex items-center justify-center shadow-2xl shadow-crousty-purple/30 hover:scale-105 active:scale-95 transition-all z-[300] shadow-glow-purple"
         >
           <Plus size={32} strokeWidth={2.5} />
         </button>
+      )}
+
+      {isManager && produits.length > 0 && !editingId && (
+        <div className="bg-amber-50 border border-amber-100 p-4 rounded-3xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-[10px] uppercase tracking-widest">
+              <Shield size={14} className="text-amber-500" />
+              Actions Manager
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  if (isSelectionMode) setSelectedIds([]);
+                }}
+                className={cn(
+                  "h-7 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest",
+                  isSelectionMode ? "bg-amber-200 text-amber-900" : "bg-white text-gray-500 border border-gray-200"
+                )}
+              >
+                {isSelectionMode ? 'Annuler' : 'Sélection'}
+              </Button>
+              <Button 
+                onClick={() => setShowBulkDeleteConfirm('all')}
+                className="h-7 px-3 bg-red-100 text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors"
+                variant="ghost"
+              >
+                Tout vider
+              </Button>
+            </div>
+          </div>
+
+          {isSelectionMode && (
+            <div className="flex items-center justify-between p-2 bg-white rounded-xl border border-amber-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => handleSelectAll(filteredAndGroupedProducts.visibleIds)}
+                  className="w-5 h-5 rounded border-2 border-amber-400 flex items-center justify-center transition-colors"
+                >
+                  {selectedIds.length > 0 && selectedIds.length >= filteredAndGroupedProducts.visibleIds.length && <Check size={14} className="text-amber-500 font-black" />}
+                </button>
+                <span className="text-[10px] font-black text-amber-900 uppercase">{selectedIds.length} sélectionné(s)</span>
+              </div>
+              <Button 
+                disabled={selectedIds.length === 0}
+                onClick={() => setShowBulkDeleteConfirm('selected')}
+                className="h-7 px-4 bg-red-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest"
+              >
+                Supprimer
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-black text-gray-900 leading-tight">Confirmation</h3>
+              <p className="text-sm text-gray-500 font-medium">
+                {showBulkDeleteConfirm === 'all' 
+                  ? "Voulez-vous vraiment vider tout le catalogue ?"
+                  : `Supprimer les ${selectedIds.length} produits sélectionnés ?`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowBulkDeleteConfirm(null)} variant="ghost" className="flex-1 font-black text-[10px] uppercase">Non</Button>
+              <Button onClick={handleBulkDelete} className="flex-1 bg-red-500 font-black text-[10px] uppercase text-white">Oui, supprimer</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {!editingId && (
@@ -261,7 +370,7 @@ export const ProduitsTab = () => {
             {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-2 rounded-md">{error}</p>}
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1 h-12" onClick={() => setEditingId(null)}>Annuler</Button>
-              <Button onClick={handleSave} className="flex-1 h-12 bg-crousty-purple">Créer</Button>
+              <Button onClick={handleSave} className="flex-1 h-12 bg-crousty-purple text-white font-bold">Créer</Button>
             </div>
           </div>
         )}
@@ -276,7 +385,7 @@ export const ProduitsTab = () => {
 
         {filteredAndGroupedProducts.sortedCategories.map(cat => (
           <div key={cat} className="space-y-3 animate-in fade-in duration-500">
-            <h4 className="font-black text-gray-400 uppercase tracking-widest text-sm flex items-center gap-2">
+            <h4 className="font-black text-gray-400 uppercase tracking-widest text-sm flex items-center gap-2 px-2">
               {(() => {
                 const conf = getIconeCategorie(cat);
                 const IconCmp = conf.icone;
@@ -290,9 +399,17 @@ export const ProduitsTab = () => {
             
             <div className="grid grid-cols-1 gap-3">
               {filteredAndGroupedProducts.grouped[cat].map((p) => (
-                <div key={p.id} className="border border-gray-100 rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={p.id} 
+                  onClick={() => isSelectionMode && toggleSelection(p.id)}
+                  className={cn(
+                    "border rounded-2xl bg-white overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer",
+                    editingId === p.id ? "border-crousty-purple shadow-lg shadow-purple-50" : "border-gray-100",
+                    selectedIds.includes(p.id) && "border-amber-400 bg-amber-50/20"
+                  )}
+                >
                   {editingId === p.id ? (
-                    <div className="p-6 bg-gray-50 space-y-5">
+                    <div className="p-6 bg-gray-50 space-y-5" onClick={e => e.stopPropagation()}>
                       <div className="flex justify-between items-center">
                         <h4 className="font-black text-gray-800">Modifier {p.name}</h4>
                       </div>
@@ -300,12 +417,20 @@ export const ProduitsTab = () => {
                       {error && <p className="text-red-500 font-bold text-sm bg-red-50 p-2 rounded-md">{error}</p>}
                       <div className="flex gap-3 pt-2">
                         <Button variant="outline" className="flex-1 h-12" onClick={() => setEditingId(null)}>Annuler</Button>
-                        <Button onClick={handleSave} className="flex-1 h-12 bg-crousty-purple">Enregistrer</Button>
+                        <Button onClick={handleSave} className="flex-1 h-12 bg-crousty-purple text-white font-bold">Enregistrer</Button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-4 px-6">
                       <div className="flex items-center gap-4">
+                        {isSelectionMode && (
+                          <div className={cn(
+                            "w-5 h-5 rounded-lg border-2 shrink-0 flex items-center justify-center transition-colors",
+                            selectedIds.includes(p.id) ? "bg-amber-500 border-amber-500" : "border-gray-200 bg-white"
+                          )}>
+                            {selectedIds.includes(p.id) && <Check size={12} className="text-white" />}
+                          </div>
+                        )}
                         {(() => {
                           const conf = getIconeCategorie(p.category || "Desserts");
                           const IconCmp = conf.icone;
@@ -329,14 +454,16 @@ export const ProduitsTab = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 hover:text-crousty-purple hover:bg-crousty-purple/10 rounded-xl transition-all">
-                          <Edit2 size={20} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(p.id); }} style={{ minWidth: 44, minHeight: 44 }} className="flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
+                      {!isSelectionMode && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="p-2 text-gray-400 hover:text-crousty-purple hover:bg-crousty-purple/10 rounded-xl transition-all">
+                            <Edit2 size={20} />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(p.id); }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -376,3 +503,4 @@ export const ProduitsTab = () => {
     </div>
   );
 };
+

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink } from 'lucide-react';
+import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink, Shield } from 'lucide-react';
 import { Button, Input, Select, Label } from './ui/LightUI';
 import { clearAllData, getStoredData, setStoredData } from '../lib/db';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
@@ -406,7 +406,7 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
                   <section className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">{t('about_tech')}</p>
                      <div className="flex flex-wrap gap-2">
-                        {['Remix', 'React', 'TypeScript', 'Tailwind', 'Dexie', 'Motion'].map(tech => (
+                        {['React', 'Vite', 'Express', 'TypeScript', 'Tailwind', 'Dexie', 'Motion'].map(tech => (
                           <span key={tech} className="px-2 py-1 bg-gray-50 text-[10px] font-bold text-gray-500 rounded-md border border-gray-100">{tech}</span>
                         ))}
                      </div>

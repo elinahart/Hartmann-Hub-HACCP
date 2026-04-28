@@ -19,8 +19,7 @@ import { useManagerUI } from '../contexts/ManagerUIContext';
  * Module Photo & Saisie Manuelle
  */
 function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: string; initialFile: File | null; onResult: (res: any) => boolean | void; onCancel: () => void }) {
-  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'compressing' | 'saving' | 'success' | 'error'>('idle');
   const [errorDetails, setErrorDetails] = useState('');
 
@@ -53,9 +52,8 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
     setStatus('compressing');
     setErrorDetails('');
     try {
-      const optimized = await optimiserPhotoCapturee(file);
-      setPhotoBlob(optimized);
-      setPhotoUrl(URL.createObjectURL(optimized));
+      const dataUrl = await compressPhotoTLC(file);
+      setPhotoDataUrl(dataUrl);
       setStatus('idle');
     } catch (err) {
       console.error(err);
@@ -84,15 +82,13 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
       const now = new Date();
       const d = now.toLocaleDateString('fr-FR').replace(/\//g, '-');
       const h = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
-      const photoId = `HUILE_${cuveName.replace(' ', '')}_${d}_${h}`;
+      const photoId = `HUILE_${cuveName.replace(' ', '')}_${d}_${h}_${Math.random().toString(36).substring(2, 6)}`;
       
-      if (photoBlob) {
-        // We already compressed it via optimiserPhotoCapturee which is much safer on Safari iPad
-        const dataUrl = await blobToDataURL(photoBlob);
-        await savePhotoBase64(photoId, dataUrl);
+      if (photoDataUrl) {
+        await savePhotoBase64(photoId, photoDataUrl);
       }
       
-      const success = onResult({ tpm: tpmValue, temperature: tempVal, photoId });
+      const success = onResult({ tpm: tpmValue, temperature: tempVal, photoId: photoDataUrl ? photoId : undefined });
       
       if (success === false) {
         // User cancelled replacement
@@ -112,7 +108,7 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
     }
   };
 
-  if (!photoUrl && status !== 'compressing') return null;
+  if (!photoDataUrl && status !== 'compressing') return null;
 
   return createPortal(
     <div className="fixed top-0 left-0 w-full h-[100dvh] z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden">
@@ -133,7 +129,7 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
                 <p className="text-sm font-bold">Optimisation...</p>
              </div>
           ) : (
-            <img src={photoUrl || ''} className="w-full h-full object-contain" alt="Testo Capture" />
+            <img src={photoDataUrl || ''} className="w-full h-full object-contain" alt="Testo Capture" />
           )}
           
           {/* Small Badges on edges */}

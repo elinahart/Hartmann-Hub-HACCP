@@ -160,10 +160,22 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
 
           // Extract photos if module supports them
           for (const item of data) {
+             // Standard photoId
              if (item.photoId) {
                 const b64 = await getPhoto(item.photoId);
                 if (b64) exportedPhotos[item.photoId] = b64;
              }
+             // For Oil Checklist (cuves[cid].photo)
+             if (item.cuves) {
+               for (const cid in item.cuves) {
+                 const photoId = item.cuves[cid]?.photo;
+                 if (photoId) {
+                    const b64 = await getPhoto(photoId);
+                    if (b64) exportedPhotos[photoId] = b64;
+                 }
+               }
+             }
+             // For receptions, if there is a photo URL in lignes (though they usually use the root photoDataUrl/photoId for BL)
           }
        }
     }

@@ -10,7 +10,7 @@ import { MembreEquipe } from '../types';
 import { usePersistentStorage } from '../hooks/usePersistentStorage';
 import { useConfig } from '../contexts/ConfigContext';
 import { useI18n } from '../lib/i18n';
-import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_DESCRIPTION, APP_LAST_UPDATE, APP_CONTACT } from '../constants';
+import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_DESCRIPTION, APP_LAST_UPDATE, APP_CONTACT, APP_CHANGELOG } from '../constants';
 
 export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
   const { users, addUser, deleteUser, updateUserPin, currentUser, logout, updateUser, setUsers } = useAuth();
@@ -22,6 +22,7 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'about'>('profile');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [versionCopied, setVersionCopied] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
 
   // Huiles Config
   const [huilesConfig, setHuilesConfig] = useState(getStoredData('config_huiles', {
@@ -372,7 +373,7 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('about_version')}</p>
                         <p className="text-sm font-bold text-gray-700">{APP_VERSION}</p>
                       </div>
-                      <Button variant="outline" className="h-8 rounded-lg text-[9px] font-black uppercase border-gray-100">
+                      <Button variant="outline" onClick={() => setIsChangelogOpen(true)} className="h-8 rounded-lg text-[9px] font-black uppercase border-gray-100">
                         {t('about_whats_new')}
                       </Button>
                     </div>
@@ -437,6 +438,54 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
           </AnimatePresence>
         </div>
       </div>
+
+      {isChangelogOpen && (
+        <div className="fixed inset-0 z-[6000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6" onClick={() => setIsChangelogOpen(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden flex flex-col max-h-full" onClick={e => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+              <h3 className="text-lg sm:text-xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+                <Sparkles size={20} className="text-crousty-purple" />
+                Notes de mise à jour
+              </h3>
+              <button 
+                onClick={() => setIsChangelogOpen(false)}
+                className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 rounded-full transition-colors"
+                aria-label="close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 overflow-y-auto bg-gray-50/50 flex-1 space-y-6">
+               {APP_CHANGELOG.map((release, i) => (
+                 <div key={release.version} className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm">
+                   <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                         <span className="bg-purple-100 text-crousty-purple text-xs font-black px-2 py-1 rounded-lg">v{release.version}</span>
+                         {i === 0 && <span className="text-[9px] font-black text-white bg-green-500 uppercase tracking-wider px-1.5 py-0.5 rounded">Nouveau</span>}
+                      </div>
+                      <span className="text-xs font-medium text-gray-500">{release.date}</span>
+                   </div>
+                   <ul className="space-y-3">
+                      {release.changes.map((txt, j) => (
+                         <li key={j} className="flex flex-col gap-1 text-sm text-gray-700">
+                           <div className="flex items-start gap-2">
+                              <CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" />
+                              <span>{txt}</span>
+                           </div>
+                         </li>
+                      ))}
+                   </ul>
+                 </div>
+               ))}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-white shrink-0">
+               <Button onClick={() => setIsChangelogOpen(false)} className="w-full h-12 bg-gray-100 text-gray-700 hover:bg-gray-200 font-black rounded-xl">Fermer</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>,
     document.body
   );

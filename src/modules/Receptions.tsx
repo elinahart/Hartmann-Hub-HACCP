@@ -10,6 +10,8 @@ import { useAutoDraft } from '../hooks/useAutoDraft';
 import { logAuditEvent } from '../lib/audit';
 import { StatusBadge } from '../components/ui/StatusBadge';
 
+import { compressPhotoTLC } from '../lib/imageUtils';
+
 export interface ReceptionProductLine {
   id: string;
   produit: string;
@@ -151,16 +153,21 @@ export default function Receptions() {
     setEntries(data);
   }, []);
 
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressPhotoTLC(file);
       setPhotoDataUrl(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Compression erreur:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoDataUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const addLigne = () => {

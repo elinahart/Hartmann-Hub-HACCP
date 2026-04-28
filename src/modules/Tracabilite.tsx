@@ -13,6 +13,7 @@ import { SignatureSaisie } from '../types';
 import { useInventaire } from '../providers/InventaireProvider';
 
 import { useI18n } from '../lib/i18n';
+import { compressPhotoTLC } from '../lib/imageUtils';
 import { cn } from '../lib/utils';
 import { getCategorieStyle } from '../lib/inventoryStyles';
 
@@ -125,16 +126,22 @@ export default function Tracabilite() {
     }
   };
 
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressPhotoTLC(file);
       setPhotoDataUrl(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Compression erreur:", err);
+      // Fallback
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoDataUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleManualSubmit = async () => {

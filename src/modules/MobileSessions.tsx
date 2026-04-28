@@ -64,10 +64,12 @@ export const MobileSessions = () => {
 
   const employees = getStoredData<MembreEquipe[]>('crousty_employees', []);
 
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
   useEffect(() => {
     loadSessions();
     loadAudit();
-    const interval = setInterval(loadSessions, 3000); // 3s refresh
+    const interval = setInterval(loadSessions, 5000); // reduced frequency
     
     window.addEventListener('crousty_audit_updated', loadAudit);
     return () => {
@@ -86,7 +88,12 @@ export const MobileSessions = () => {
 
   const loadSessions = () => {
     fetch('/api/sessions')
-      .then(res => res.json())
+      .then(res => {
+        const isHtml = res.headers.get('content-type')?.includes('text/html');
+        if (!res.ok || isHtml) throw new Error('Offline');
+        setIsOfflineMode(false);
+        return res.json();
+      })
       .then(data => {
         // Normalize server data to MobileSession type
         const normalized: MobileSession[] = (data.sessions || []).map((s: any) => ({
@@ -107,13 +114,14 @@ export const MobileSessions = () => {
         setStoredData('crousty_mobile_sessions', normalized);
       })
       .catch(err => {
+        setIsOfflineMode(true);
         const local = getStoredData<MobileSession[]>('crousty_mobile_sessions', []);
         setSessions(local);
       });
   };
 
   useEffect(() => {
-    if (showQrModal) {
+    if (showQrModal && !isOfflineMode) {
       const currentSession = sessions.find(s => s.id === showQrModal.id);
       if (currentSession && (currentSession.status === 'connected' || currentSession.status === 'collecting' || currentSession.status === 'uploaded')) {
         const timer = setTimeout(() => {
@@ -122,7 +130,7 @@ export const MobileSessions = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [showQrModal, sessions]);
+  }, [showQrModal, sessions, isOfflineMode]);
 
   const handleDeleteSession = async (sid: string) => {
     try {
@@ -345,6 +353,7 @@ export const MobileSessions = () => {
                     isConfirmingDelete={confirmingDelete === session.id}
                     onSetConfirmingDelete={(sid: string | null) => setConfirmingDelete(sid)}
                     onDelete={handleDeleteSession}
+                    isOfflineMode={isOfflineMode}
                  />
                ))
              )}
@@ -545,8 +554,18 @@ export const MobileSessions = () => {
                   </div>
                 ) : (
                   <div className="bg-white/10 p-4 rounded-2xl flex items-center gap-3 max-w-sm mx-auto border border-white/10">
-                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                    <span className="text-sm font-medium">En attente de connexion du téléphone...</span>
+                    {isOfflineMode ? (
+                      <div className="flex flex-col items-center gap-2 text-center w-full">
+                        <AlertTriangle className="text-yellow-400" size={24} />
+                        <span className="text-sm font-bold text-yellow-100">Serveur API indisponible</span>
+                        <p className="text-xs text-white/70">Scannez le code, effectuez la saisie, puis utilisez l'import manuel (bouton ZIP) à la fin.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                        <span className="text-sm font-medium">En attente de connexion du téléphone...</span>
+                      </>
+                    )}
                   </div>
                 )}
                 
@@ -640,7 +659,7 @@ const KPIItem = ({ label, value, icon: Icon, color, bg }: any) => (
   </Card>
 );
 
-const SessionRow = ({ session, onShowQr, onImport, onDelete, isConfirmingDelete, onSetConfirmingDelete }: any) => {
+const SessionRow = ({ session, onShowQr, onImport, onDelete, isConfirmingDelete, onSetConfirmingDelete, isOfflineMode }: any) => {
   const safeFormat = (dateStr: string | undefined, formatStr: string) => {
     if (!dateStr) return '--:--';
     const date = new Date(dateStr);
@@ -661,7 +680,7 @@ const SessionRow = ({ session, onShowQr, onImport, onDelete, isConfirmingDelete,
              <div>
                 <div className="flex items-center gap-2 mb-1">
                    <h3 className="font-black text-gray-900 text-lg uppercase tracking-tight">{session.sessionName}</h3>
-                   <StatusBadge status={isExpired ? 'expired' : session.status as any} />
+                   <StatusBadge status={isExpired ? 'expired' : session.status as any} label={isOfflineMode && session.status === 'waiting' && !isExpired ? 'Mode Manuel' : undefined} />
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-bold uppercase tracking-wider">
                    <span className="flex items-center gap-1.5"><User size={14}/> {session.assignedToName}</span>

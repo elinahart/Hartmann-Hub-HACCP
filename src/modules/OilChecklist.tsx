@@ -266,7 +266,8 @@ function PhotoTesto({ cuveName, initialFile, onResult, onCancel }: { cuveName: s
  * Modal d'affichage de la photo en grand
  */
 function PhotoViewer({ photoId, onClose }: { photoId: string; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null | undefined>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -274,17 +275,41 @@ function PhotoViewer({ photoId, onClose }: { photoId: string; onClose: () => voi
   }, []);
 
   useEffect(() => {
-    getPhotoBase64(photoId).then(setUrl);
+    setLoading(true);
+    getPhotoBase64(photoId)
+      .then(res => {
+        setUrl(res);
+        setLoading(false);
+      })
+      .catch(() => {
+        setUrl(undefined);
+        setLoading(false);
+      });
   }, [photoId]);
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center p-4 overflow-hidden" onClick={onClose}>
-      <button className="absolute top-8 right-8 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-10" onClick={onClose}><X size={32} /></button>
-      {url ? (
-        <img src={url} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain relative z-0" alt="Testo capture grand" onClick={e => e.stopPropagation()} />
-      ) : (
-        <Loader2 className="text-white animate-spin" size={48} />
-      )}
+      <button className="absolute top-8 right-8 text-white p-2 hover:bg-white/10 rounded-full transition-colors z-[100]" onClick={onClose}>
+        <X size={32} />
+      </button>
+      <div className="relative w-full h-full max-h-[85vh] flex items-center justify-center pointer-events-none">
+        {loading ? (
+          <Loader2 className="text-white animate-spin" size={48} />
+        ) : url ? (
+          <img 
+            src={url} 
+            className="w-auto h-auto max-w-full max-h-full rounded-xl shadow-2xl object-contain pointer-events-auto" 
+            alt="Testo capture grand" 
+            onClick={e => e.stopPropagation()} 
+          />
+        ) : (
+          <div className="bg-white/10 p-8 rounded-3xl flex flex-col items-center justify-center text-center text-white pointer-events-auto" onClick={e => e.stopPropagation()}>
+            <AlertTriangle size={48} className="text-red-400 mb-4" />
+            <h3 className="text-xl font-bold mb-2">Image introuvable</h3>
+            <p className="text-gray-300 text-sm">La photo pour ce relevé a été supprimée ou n'a pas pu être chargée.</p>
+          </div>
+        )}
+      </div>
     </div>,
     document.body
   );

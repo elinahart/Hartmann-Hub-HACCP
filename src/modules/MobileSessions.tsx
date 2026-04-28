@@ -12,7 +12,7 @@ import { getStoredData, setStoredData, savePhotoBase64 } from '../lib/db';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { useManagerUI } from '../contexts/ManagerUIContext';
-import { logAuditEvent } from '../lib/audit';
+import { logAuditEvent, getAuditEvents } from '../lib/audit';
 import { QRCodeSVG } from 'qrcode.react';
 import JSZip from 'jszip';
 import { format } from 'date-fns';
@@ -79,7 +79,7 @@ export const MobileSessions = () => {
   }, []);
 
   const loadAudit = () => {
-    const allEvents = getStoredData<any[]>('crousty_audit_log', []);
+    const allEvents = getAuditEvents();
     const sessionEvents = allEvents
       .filter(e => e.module === 'session' || e.module === 'mobile')
       .slice(0, 3); // Limited to 3 items
@@ -116,7 +116,16 @@ export const MobileSessions = () => {
       .catch(err => {
         setIsOfflineMode(true);
         const local = getStoredData<MobileSession[]>('crousty_mobile_sessions', []);
-        setSessions(local);
+        const now = Date.now();
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        const filteredLocal = local.filter(s => {
+          const timestamp = s.lastActivityAt || s.createdAt;
+          return now - new Date(timestamp).getTime() <= TWENTY_FOUR_HOURS;
+        });
+        if (filteredLocal.length !== local.length) {
+          setStoredData('crousty_mobile_sessions', filteredLocal);
+        }
+        setSessions(filteredLocal);
       });
   };
 
@@ -598,7 +607,7 @@ export const MobileSessions = () => {
               </div>
               
               <div className="p-6 overflow-y-auto space-y-4">
-                {getStoredData<any[]>('crousty_audit_log', [])
+                {getAuditEvents()
                   .filter(e => e.module === 'session' || e.module === 'mobile')
                   .map((item, idx) => {
                     const eventDate = new Date(item.timestamp);

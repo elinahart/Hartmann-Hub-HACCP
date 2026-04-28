@@ -19,7 +19,12 @@ export interface AuditEvent {
 
 export function logAuditEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>) {
   try {
-    const events = getStoredData<AuditEvent[]>('crousty_audit_log', []);
+    const rawEvents = getStoredData<AuditEvent[]>('crousty_audit_log', []);
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    
+    let events = rawEvents.filter(e => now - new Date(e.timestamp).getTime() <= TWENTY_FOUR_HOURS);
+    
     const newEvent: AuditEvent = {
       ...event,
       id: Date.now().toString(36) + Math.random().toString(36).substring(2),
@@ -40,7 +45,20 @@ export function logAuditEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>) {
 }
 
 export function getAuditEvents(): AuditEvent[] {
-  return getStoredData<AuditEvent[]>('crousty_audit_log', []);
+  const events = getStoredData<AuditEvent[]>('crousty_audit_log', []);
+  const now = Date.now();
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  
+  // Clean up events older than 24h
+  const filteredEvents = events.filter(e => {
+    return now - new Date(e.timestamp).getTime() <= TWENTY_FOUR_HOURS;
+  });
+
+  if (filteredEvents.length !== events.length) {
+    setStoredData('crousty_audit_log', filteredEvents);
+  }
+
+  return filteredEvents;
 }
 
 export function clearAuditEvents() {

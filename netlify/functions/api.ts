@@ -48,11 +48,20 @@ app.get("/api/sessions", async (req, res) => {
     const store = getStore('sessions');
     const { blobs } = await store.list();
     const sessions = [];
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
     for (const blob of blobs) {
       const data = await store.get(blob.key, { type: 'json' });
-      if (data) sessions.push({ sid: blob.key, ...data });
+      if (data) {
+        if (now - (data.timestamp || 0) > TWENTY_FOUR_HOURS) {
+          await store.delete(blob.key).catch(() => {});
+        } else {
+          sessions.push({ sid: blob.key, ...data });
+        }
+      }
     }
-    const list = sessions.map(data => ({
+    const list = sessions.map((data: any) => ({
       sid: data.sid,
       name: data.name,
       modules: data.modules,
@@ -61,13 +70,19 @@ app.get("/api/sessions", async (req, res) => {
     })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     res.json({ sessions: list });
   } catch (err) {
-    const list = Object.entries(memoryStore).map(([sid, data]) => ({
-      sid,
-      name: data.name,
-      modules: data.modules,
-      status: data.status,
-      timestamp: data.timestamp
-    })).sort((a, b) => b.timestamp - a.timestamp);
+    const list = Object.entries(memoryStore).map(([sid, data]) => {
+      if (Date.now() - (data.timestamp || 0) > 24 * 60 * 60 * 1000) {
+        delete memoryStore[sid];
+        return null;
+      }
+      return {
+        sid,
+        name: data.name,
+        modules: data.modules,
+        status: data.status,
+        timestamp: data.timestamp
+      };
+    }).filter(Boolean).sort((a: any, b: any) => b.timestamp - a.timestamp);
     res.json({ sessions: list });
   }
 });

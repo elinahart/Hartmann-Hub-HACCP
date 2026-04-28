@@ -222,7 +222,7 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
        
     } catch (err: any) {
        if (err.message === "API_OFFLINE" || String(err).includes("Unexpected token")) {
-           alert("Attention : Le serveur dynamique est désactivé sur cet environnement (ex: Netlify).\n\nVeuillez utiliser le bouton 'Télécharger manuellement (ZIP)' puis envoyer le fichier au Hub (iPad) via Airdrop, Email, etc.");
+           alert("Erreur de connexion : Le serveur n'est pas joignable ou les fonctions serveur ne sont pas activées. Si vous êtes sur Netlify, assurez-vous de déployer `netlify/functions/api.ts` et d'activer Netlify Blobs. \n\nVeuillez utiliser le bouton 'Télécharger manuellement (ZIP)' puis envoyer le fichier au Hub (iPad).");
        } else {
            alert("Erreur lors de l'export: " + err.message);
        }

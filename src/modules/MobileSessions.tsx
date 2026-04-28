@@ -762,10 +762,21 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
   useEffect(() => {
     const fetchSessionData = async () => {
       try {
-        const response = await fetch(`/api/sessions/${session.id}/download`);
+        const response = await fetch(`/api/sessions/${session.id}/download?format=json`);
         if (!response.ok) throw new Error("Erreur lors du téléchargement");
         
-        const blob = await response.blob();
+        const data = await response.json();
+        if (!data || !data.base64) throw new Error("Format d'export invalide (base64 manquant)");
+        
+        // Convert Base64 to Blob safely for Safari/iPad compatibility without passing through netlify's binary conversion
+        const binaryString = atob(data.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+           bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/zip' });
+        
+        const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(blob);
         const manifestFile = zip.file('manifest.json');
         

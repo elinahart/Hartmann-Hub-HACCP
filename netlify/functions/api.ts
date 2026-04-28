@@ -123,9 +123,14 @@ app.get("/api/sessions/:sid/status", async (req, res) => {
 
 app.get("/api/sessions/:sid/download", async (req, res) => {
   const { sid } = req.params;
+  const { format } = req.query;
   const session = await getSession(sid);
   if (!session || (!session.fileBase64 && !session.file)) {
     return res.status(404).json({ error: "Aucune donnée uploadée pour cette session." });
+  }
+  
+  if (format === 'json') {
+    return res.json({ fileName: session.fileName, base64: session.fileBase64 });
   }
   
   const buffer = session.fileBase64 ? Buffer.from(session.fileBase64, 'base64') : session.file;
@@ -154,4 +159,6 @@ app.delete("/api/sessions/:sid", async (req, res) => {
   res.json({ success: true });
 });
 
-export const handler = serverless(app);
+export const handler = serverless(app, {
+  binary: ['multipart/form-data', 'application/zip', 'application/octet-stream', '*/*']
+});

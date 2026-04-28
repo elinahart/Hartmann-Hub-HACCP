@@ -4,6 +4,7 @@ import { Button, Select, Label } from '../ui/LightUI';
 import { useStoragePersist } from '../../hooks/useStoragePersist';
 import { ImportReport, ModuleName } from '../../contexts/ConfigContext';
 import { useConfig } from '../../contexts/ConfigContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { format, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { AppConfig, ConfigSchema } from '../../lib/configSchema';
@@ -11,6 +12,7 @@ import { importCatalogueProduits } from '../../lib/produitsImportService';
 
 export const SecurityStorageSection = () => {
   const { status, storageInfo, requestPersist } = useStoragePersist();
+  const { currentUser } = useAuth();
   
   const { config, exportConfig, importConfig } = useConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -170,10 +172,11 @@ export const SecurityStorageSection = () => {
         </div>
       </section>
 
-      {/* Export / Import Section */}
-      <section className="bg-gray-50 p-6 sm:p-8 rounded-[2.5rem] border border-gray-100">
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* Export */}
+      {/* Export / Import Section - Managers Only */}
+      {currentUser?.role === 'manager' && (
+        <section className="bg-gray-50 p-6 sm:p-8 rounded-[2.5rem] border border-gray-100">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              {/* Export */}
             <div>
                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
                  <Download className="text-crousty-purple" />
@@ -333,6 +336,7 @@ export const SecurityStorageSection = () => {
             </div>
          </div>
       </section>
+      )}
     </div>
   );
 };

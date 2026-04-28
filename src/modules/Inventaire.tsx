@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, Button } from '../components/ui/LightUI';
 import { InventoryEntry, InventoryProduct, InventoryItemDetail } from '../types';
 import { getStoredData, setStoredData } from '../lib/db';
-import { Trash2, Check, X, ChevronDown, ChevronUp, FileText, Settings, Search, Package, ChevronRight, AlertTriangle, Activity, Calendar, Upload, Brain } from 'lucide-react';
+import { Trash2, Check, X, ChevronDown, ChevronUp, FileText, Settings, Search, Package, ChevronRight, AlertTriangle, Activity, Calendar, Upload, Brain, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -201,6 +201,45 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
     });
   };
 
+  const importJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const importedData = JSON.parse(event.target?.result as string);
+        if (Array.isArray(importedData)) {
+           const combined = [...entries, ...importedData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+           const unique = Array.from(new Map(combined.map(item => [item.id || item.date + item.responsable, item])).values());
+           
+           setEntries(unique);
+           setStoredData('crousty_inventory', unique);
+        } else {
+           setError("Erreur : Le fichier JSON doit contenir un tableau d'inventaires.");
+        }
+      } catch (err) {
+        console.error(err);
+        setError("Erreur lors de l'import JSON.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const exportJSON = () => {
+    const dataStr = JSON.stringify(entries, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `crousty_inventaire_historique_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSave = () => {
     const mobileWorker = localStorage.getItem('crousty_mobile_worker');
     const responsableName = currentUser?.name || (isMobileMode ? (mobileWorker || 'Appareil Mobile') : null);
@@ -253,10 +292,15 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
         const entriesByDate: Record<string, InventoryEntry> = {};
 
         rows.forEach(row => {
-           const d = row['Date'] || row['date'];
-           const pName = row['Produit'] || row['produit'];
-           const q = row['Quantite'] || row['Quantité'] || row['quantite'] || '0';
-           const resp = row['Responsable'] || row['responsable'] || 'Import';
+           const getVal = (keys: string[]) => {
+             const key = Object.keys(row).find(k => keys.includes(k.toLowerCase().trim()));
+             return key ? row[key] : undefined;
+           };
+
+           const d = getVal(['date']);
+           const pName = getVal(['produit', 'produits', 'item', 'nom']);
+           let q = getVal(['quantite', 'quantité', 'qty', 'quantites']) || '0';
+           const resp = getVal(['responsable', 'user', 'utilisateur', 'employe', 'employé']) || 'Import XLS';
            
            if (!d || !pName) return;
 
@@ -281,9 +325,26 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
            
            if (!entriesByDate[key].items[cat]) entriesByDate[key].items[cat] = {};
            
+           // Parsing units and cartons like "1 cart. 2 u." or "15" or "15 u."
+           const qStr = String(q).toLowerCase().trim();
+           let units = 0;
+           let cartons = 0;
+
+           const cartMatch = qStr.match(/(\d+)\s*cart/);
+           if (cartMatch) cartons = parseInt(cartMatch[1], 10);
+
+           const uMatch = qStr.match(/(\d+)\s*u/);
+           if (uMatch) units = parseInt(uMatch[1], 10);
+
+           if (!cartMatch && !uMatch) {
+             // Fallback if just a number
+             const numMatch = qStr.match(/(\d+)/);
+             if (numMatch) units = parseInt(numMatch[1], 10);
+           }
+
            entriesByDate[key].items[cat][pName] = {
-              units: String(q),
-              cartons: '0',
+              units: String(units),
+              cartons: String(cartons),
               na: false
            };
         });
@@ -296,7 +357,7 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
         }
       } catch (err) {
         console.error(err);
-        setError("Erreur lors de l'import. Vérifiez le format du fichier (Date, Produit, Quantite, Responsable).");
+        setError("Erreur lors de l'import. Vérifiez le format du fichier (Date, Produit, Quantité, Responsable).");
       }
     };
     reader.readAsArrayBuffer(file);
@@ -755,11 +816,23 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-500 uppercase">Historique</h3>
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl cursor-pointer transition-colors border border-gray-200">
-            <Upload size={16} />
-            <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">Importer XLS</span>
-            <input type="file" accept=".xls,.xlsx" onChange={importExcel} className="hidden" />
-          </label>
+          {currentUser?.role === 'manager' && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportJSON} className="gap-2 text-xs">
+                <Download size={14} /> <span className="hidden sm:inline">Export JSON</span>
+              </Button>
+              <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl cursor-pointer transition-colors border border-gray-200 text-xs font-bold uppercase tracking-wider">
+                <Upload size={14} />
+                <span className="hidden sm:inline">Import JSON</span>
+                <input type="file" accept=".json,application/json" onChange={importJSON} className="hidden" />
+              </label>
+              <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl cursor-pointer transition-colors border border-gray-200 text-xs font-bold uppercase tracking-wider">
+                <Upload size={14} />
+                <span className="hidden sm:inline">Importer XLS</span>
+                <input type="file" accept=".xls,.xlsx" onChange={importExcel} className="hidden" />
+              </label>
+            </div>
+          )}
         </div>
         <AnimatePresence>
           {entries.map((e: InventoryEntry, idx: number) => {

@@ -481,13 +481,15 @@ export default function App() {
                       <span className="font-black text-xs uppercase tracking-widest hidden sm:block">{t('dashboard_mobile_btn')}</span>
                     </button>
                     
-                    <button 
-                      onClick={() => setIsExportModalOpen(true)}
-                      className="w-12 h-12 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shadow-sm active:scale-95"
-                      title={t('dashboard_download_zip')}
-                    >
-                      <Download size={20} />
-                    </button>
+                    {currentUser?.role === 'manager' && (
+                      <button 
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="w-12 h-12 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shadow-sm active:scale-95"
+                        title={t('dashboard_download_zip')}
+                      >
+                        <Download size={20} />
+                      </button>
+                    )}
                   </div>
                   
                   <div className="h-14 w-[1px] bg-slate-100 mx-2 hidden md:block" />

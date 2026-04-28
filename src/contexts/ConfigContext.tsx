@@ -320,39 +320,11 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     if (mode === 'global') {
-      const currentConfig = { ...config };
-      
-      try {
-        // Sync the latest employees from Auth/localStorage before export
-        const storedUsers = localStorage.getItem('crousty-equipe-membres');
-        if (storedUsers) {
-          currentConfig.employes = JSON.parse(storedUsers);
-        }
-        // Sync the latest products just in case
-        const storedProducts = localStorage.getItem('crousty-catalogue-produits');
-        if (storedProducts) {
-          currentConfig.produits = JSON.parse(storedProducts);
-        }
-      } catch (e) {
-        console.error("Failed to sync fresh data before export", e);
-      }
-
+      const currentConfig = syncWithLocalStorage(config);
       exportPayload.data = currentConfig;
-    } else if (targetModule && config[targetModule]) {
-      let moduleData = config[targetModule];
-      
-      try {
-        if (targetModule === 'employes') {
-          const storedUsers = localStorage.getItem('crousty-equipe-membres');
-          if (storedUsers) moduleData = JSON.parse(storedUsers);
-        } else if (targetModule === 'produits') {
-          const storedProducts = localStorage.getItem('crousty-catalogue-produits');
-          if (storedProducts) moduleData = JSON.parse(storedProducts);
-        }
-      } catch (e) {
-         console.error("Failed to sync fresh data before module export", e);
-      }
-      
+    } else if (targetModule) {
+      const currentConfig = syncWithLocalStorage(config);
+      let moduleData = currentConfig[targetModule];
       exportPayload.data = { [targetModule]: moduleData } as Partial<AppConfig>;
     }
 

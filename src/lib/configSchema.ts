@@ -222,32 +222,14 @@ export function deepMergeWithDefaults(imported: any, defaults: AppConfig = DEFAU
     result.restaurant = { ...defaults.restaurant, ...imported.restaurant };
   }
 
-  // For arrays, we now MERGE instead of REPLACE for global fusion to work well
-  // We use the refined merging logic to avoid duplicate names/IDs while updating existing entries
-  if (imported.employes) {
-    const res = mergeArrays(result.employes || [], imported.employes);
-    result.employes = res.merged;
-  }
-  if (imported.temperatures) {
-    const res = mergeArrays(result.temperatures || [], imported.temperatures);
-    result.temperatures = res.merged;
-  }
-  if (imported.huiles) {
-    const res = mergeArrays(result.huiles || [], imported.huiles);
-    result.huiles = res.merged;
-  }
-  if (imported.nettoyage) {
-    const res = mergeArrays(result.nettoyage || [], imported.nettoyage);
-    result.nettoyage = res.merged;
-  }
-  if (imported.produits) {
-    const res = mergeArrays(result.produits || [], imported.produits);
-    result.produits = res.merged;
-  }
-  if (imported.cuisson) {
-    const res = mergeArrays(result.cuisson || [], imported.cuisson);
-    result.cuisson = res.merged;
-  }
+  // For arrays, we should REPLACE instead of MERGE when applying defaults or doing global imports
+  // so we don't resurrect items that were deleted by the user. If the user's config provides it, use it.
+  if (Array.isArray(imported.employes)) result.employes = imported.employes;
+  if (Array.isArray(imported.temperatures)) result.temperatures = imported.temperatures;
+  if (Array.isArray(imported.huiles)) result.huiles = imported.huiles;
+  if (Array.isArray(imported.nettoyage)) result.nettoyage = imported.nettoyage;
+  if (Array.isArray(imported.produits)) result.produits = imported.produits;
+  if (Array.isArray(imported.cuisson)) result.cuisson = imported.cuisson;
 
   if (imported.inventaire && typeof imported.inventaire === 'object') {
     result.inventaire = { ...defaults.inventaire, ...imported.inventaire };

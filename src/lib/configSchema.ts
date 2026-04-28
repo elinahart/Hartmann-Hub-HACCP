@@ -61,7 +61,9 @@ export const InventaireConfigSchema = z.object({
   frequence: z.enum(['quotidien', 'hebdomadaire', 'mensuel']).default('hebdomadaire'),
   jourSemaine: z.enum(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']).default('lundi'),
   rappelActif: z.boolean().default(true),
-  envoiSuperieur: z.boolean().default(true)
+  envoiSuperieur: z.boolean().default(true),
+  produits: z.array(z.any()).optional(),
+  historique: z.array(z.any()).optional()
 });
 
 export const CookingProductSchema = z.object({

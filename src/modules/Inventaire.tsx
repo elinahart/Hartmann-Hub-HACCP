@@ -73,6 +73,12 @@ export default function Inventaire({ setIsSidebarCollapsed }: { setIsSidebarColl
     cats.forEach(cat => { initialExpanded[cat] = true; });
     setExpandedCategories(initialExpanded);
     setLoading(false);
+
+    const handleHistoUpdate = () => {
+       setEntries(getStoredData<InventoryEntry[]>('crousty_inventory', []));
+    };
+    window.addEventListener('crousty-inventaire-historique-updated', handleHistoUpdate);
+    return () => window.removeEventListener('crousty-inventaire-historique-updated', handleHistoUpdate);
   }, [products.length]);
 
   useEffect(() => {

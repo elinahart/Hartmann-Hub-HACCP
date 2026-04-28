@@ -172,6 +172,16 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const storedModules = localStorage.getItem('crousty-modules-activation');
       if (storedModules) currentData.modules = JSON.parse(storedModules);
+
+      const storedInventaireProduits = localStorage.getItem('crousty-inventaire-produits');
+      const storedInventaireHisto = localStorage.getItem('crousty_inventory');
+      if (storedInventaireProduits || storedInventaireHisto) {
+        currentData.inventaire = {
+          ...currentData.inventaire,
+          produits: storedInventaireProduits ? JSON.parse(storedInventaireProduits) : undefined,
+          historique: storedInventaireHisto ? JSON.parse(storedInventaireHisto) : undefined
+        };
+      }
     } catch (e) {
       console.warn("Failed to sync latest module data", e);
     }
@@ -287,11 +297,23 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             localStorage.setItem('crousty-modules-activation', dataStr);
             window.dispatchEvent(new CustomEvent('crousty-modules-updated'));
             break;
+          case 'inventaire': {
+            const invData = data as any;
+            if (invData.produits) {
+              localStorage.setItem('crousty-inventaire-produits', JSON.stringify(invData.produits));
+              window.dispatchEvent(new CustomEvent('crousty-inventaire-produits-updated'));
+            }
+            if (invData.historique) {
+              localStorage.setItem('crousty_inventory', JSON.stringify(invData.historique));
+              window.dispatchEvent(new CustomEvent('crousty-inventaire-historique-updated'));
+            }
+            break;
+          }
         }
       };
 
       if (finalMode === 'global') {
-        (['employes', 'produits', 'temperatures', 'huiles', 'nettoyage', 'cuisson', 'modules'] as ModuleName[]).forEach(syncModule);
+        (['employes', 'produits', 'temperatures', 'huiles', 'nettoyage', 'cuisson', 'modules', 'inventaire'] as ModuleName[]).forEach(syncModule);
       } else {
         syncModule(finalModule);
       }

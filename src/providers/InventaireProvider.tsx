@@ -40,6 +40,18 @@ export function InventaireProvider({ children }: { children: React.ReactNode }) 
     }
   });
 
+  // Listen to cross-module updates (like global import)
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setProductsState(JSON.parse(saved));
+      } catch(e){}
+    };
+    window.addEventListener('crousty-inventaire-produits-updated', handleUpdate);
+    return () => window.removeEventListener('crousty-inventaire-produits-updated', handleUpdate);
+  }, []);
+
   // Persist to localStorage whenever state changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));

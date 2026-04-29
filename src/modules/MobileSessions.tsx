@@ -774,16 +774,23 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
         const response = await fetch(`/api/sessions/${session.id}/download?format=json`);
         if (!response.ok) throw new Error("Erreur lors du téléchargement");
         
-        const data = await response.json();
-        if (!data || !data.base64) throw new Error("Format d'export invalide (base64 manquant)");
+        let blob: Blob;
+        const contentType = response.headers.get('content-type') || '';
         
-        // Convert Base64 to Blob safely for Safari/iPad compatibility without passing through netlify's binary conversion
-        const binaryString = atob(data.base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-           bytes[i] = binaryString.charCodeAt(i);
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            if (!data || !data.base64) throw new Error("Format d'export invalide (base64 manquant)");
+            
+            // Convert Base64 to Blob safely for Safari/iPad compatibility
+            const binaryString = atob(data.base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+               bytes[i] = binaryString.charCodeAt(i);
+            }
+            blob = new Blob([bytes], { type: 'application/zip' });
+        } else {
+            blob = await response.blob();
         }
-        const blob = new Blob([bytes], { type: 'application/zip' });
         
         const JSZip = (await import('jszip')).default;
         const zip = await JSZip.loadAsync(blob);

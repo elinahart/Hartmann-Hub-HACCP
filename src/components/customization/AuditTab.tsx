@@ -5,7 +5,7 @@ import { FileEdit, Shield, ArrowRight, History, Trash2, Check, X } from 'lucide-
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from '../../contexts/AuthContext';
-import { Button } from '../ui/LightUI';
+import { Button, Input } from '../ui/LightUI';
 import { cn } from '../../lib/utils';
 
 export const AuditTab = () => {
@@ -14,6 +14,8 @@ export const AuditTab = () => {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [filterModule, setFilterModule] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterDateStart, setFilterDateStart] = useState<string>('');
+  const [filterDateEnd, setFilterDateEnd] = useState<string>('');
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -33,6 +35,19 @@ export const AuditTab = () => {
   const filteredEvents = events.filter(e => {
     if (filterModule !== 'all' && e.module !== filterModule) return false;
     if (filterType !== 'all' && e.type !== filterType) return false;
+    if (filterDateStart || filterDateEnd) {
+      const eventDate = new Date(e.timestamp);
+      if (filterDateStart) {
+        const start = new Date(filterDateStart);
+        start.setHours(0, 0, 0, 0);
+        if (eventDate < start) return false;
+      }
+      if (filterDateEnd) {
+        const end = new Date(filterDateEnd);
+        end.setHours(23, 59, 59, 999);
+        if (eventDate > end) return false;
+      }
+    }
     return true;
   });
 
@@ -63,34 +78,51 @@ export const AuditTab = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-gray-800">Journal d'Audit Global</h2>
-          <p className="text-gray-500 text-sm">Historique de toutes les actions et modifications</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-gray-800">Journal d'Audit Global</h2>
+            <p className="text-gray-500 text-sm">Historique de toutes les actions et modifications</p>
+          </div>
+          <div className="flex gap-4">
+            <select 
+              value={filterModule}
+              onChange={(e) => setFilterModule(e.target.value)}
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold text-gray-600 bg-white"
+            >
+              <option value="all">Tous les modules</option>
+              <option value="reception">Réceptions</option>
+              <option value="tracabilite">Traçabilité</option>
+              <option value="temperature">Températures</option>
+              <option value="mobile">Sessions Mobiles</option>
+            </select>
+            <select 
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold text-gray-600 bg-white"
+            >
+              <option value="all">Toutes les actions</option>
+              <option value="create">Création</option>
+              <option value="update">Modification</option>
+              <option value="delete">Suppression</option>
+              <option value="sync">Synchronisation</option>
+            </select>
+          </div>
         </div>
-        <div className="flex gap-4">
-          <select 
-            value={filterModule}
-            onChange={(e) => setFilterModule(e.target.value)}
-            className="border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold text-gray-600 bg-white"
-          >
-            <option value="all">Tous les modules</option>
-            <option value="reception">Réceptions</option>
-            <option value="tracabilite">Traçabilité</option>
-            <option value="temperature">Températures</option>
-            <option value="mobile">Sessions Mobiles</option>
-          </select>
-          <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-200 rounded-lg px-4 py-2 text-sm font-bold text-gray-600 bg-white"
-          >
-            <option value="all">Toutes les actions</option>
-            <option value="create">Création</option>
-            <option value="update">Modification</option>
-            <option value="delete">Suppression</option>
-            <option value="sync">Synchronisation</option>
-          </select>
+        <div className="flex items-center justify-end gap-2">
+          <Input 
+            type="date"
+            value={filterDateStart}
+            onChange={(e: any) => setFilterDateStart(e.target.value)}
+            className="w-auto h-10 py-1 text-sm bg-white"
+          />
+          <span className="text-gray-400 font-bold px-1">à</span>
+          <Input 
+            type="date"
+            value={filterDateEnd}
+            onChange={(e: any) => setFilterDateEnd(e.target.value)}
+            className="w-auto h-10 py-1 text-sm bg-white"
+          />
         </div>
       </div>
 

@@ -116,14 +116,6 @@ export default function InventaireIntelligent() {
     };
   }, [inventories, receptions, compareCount, products]);
 
-  if (inventories.length < 2) {
-    return (
-      <div className="p-8 text-center text-gray-500 font-bold bg-white rounded-[2rem] border border-gray-100 mt-8 shadow-sm">
-        Pas assez d'inventaires enregistrés pour l'analyse intelligente. (Minimum 2 nécessaires).
-      </div>
-    );
-  }
-
   const filteredStats = analysis?.stats.filter(s => s.product.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
 
   return (
@@ -136,30 +128,42 @@ export default function InventaireIntelligent() {
         </div>
       </div>
 
-      <Card className="bg-crousty-purple text-white p-6 rounded-[2rem]">
-         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-               <h3 className="font-black text-xl mb-1">Analyse des consommations</h3>
-               <p className="text-purple-200 text-sm font-medium">Comparaison et prévisions de ruptures.</p>
+      {inventories.length < 2 ? (
+        <Card className="bg-white p-12 rounded-[2rem] flex flex-col items-center justify-center text-center shadow-sm border border-gray-100 max-w-2xl mx-auto mt-12">
+          <div className="w-24 h-24 mb-6 rounded-full bg-gray-50 flex items-center justify-center border-4 border-white shadow-sm ring-1 ring-gray-100">
+            <Brain size={48} className="text-gray-300" />
+          </div>
+          <h3 className="text-xl font-black text-gray-800 mb-3 tracking-tight">Pas assez de données pour l'analyse</h3>
+          <p className="text-sm font-bold text-gray-500 leading-relaxed max-w-md">
+            L'Intelligence Artificielle a besoin d'au moins 2 inventaires consécutifs pour calculer les moyennes de consommation et anticiper les ruptures.
+          </p>
+        </Card>
+      ) : (
+        <>
+          <Card className="bg-crousty-purple text-white p-6 rounded-[2rem]">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div>
+                 <h3 className="font-black text-xl mb-1">Analyse des consommations</h3>
+                 <p className="text-purple-200 text-sm font-medium">Comparaison et prévisions de ruptures.</p>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 p-2 rounded-xl border border-white/20">
+                 <span className="text-sm font-bold pl-2">Comparer :</span>
+                 {[2, 3, 4, 5].map(n => (
+                   <button 
+                     key={n}
+                     onClick={() => setCompareCount(n)}
+                     disabled={inventories.length < n}
+                     className={`w-10 h-10 rounded-lg font-black transition-colors ${compareCount === n ? 'bg-white text-crousty-purple shadow-md' : 'text-white hover:bg-white/20'} disabled:opacity-30 disabled:cursor-not-allowed`}
+                   >
+                     {n}
+                   </button>
+                 ))}
+                 <span className="text-sm font-bold pr-2 ml-1 hidden sm:inline">Inv.</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 bg-white/10 p-2 rounded-xl border border-white/20">
-               <span className="text-sm font-bold pl-2">Comparer :</span>
-               {[2, 3, 4, 5].map(n => (
-                 <button 
-                   key={n}
-                   onClick={() => setCompareCount(n)}
-                   disabled={inventories.length < n}
-                   className={`w-10 h-10 rounded-lg font-black transition-colors ${compareCount === n ? 'bg-white text-crousty-purple shadow-md' : 'text-white hover:bg-white/20'} disabled:opacity-30 disabled:cursor-not-allowed`}
-                 >
-                   {n}
-                 </button>
-               ))}
-               <span className="text-sm font-bold pr-2 ml-1 hidden sm:inline">Inv.</span>
-            </div>
-         </div>
-      </Card>
+          </Card>
 
-      {analysis && (
+          {analysis && (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="bg-white border border-gray-100 p-4 rounded-xl flex items-center justify-between text-sm font-bold text-gray-600 shadow-sm flex-1">
@@ -315,7 +319,8 @@ export default function InventaireIntelligent() {
         </div>,
         document.body
       )}
-
+      </>
+      )}
     </div>
   );
 }

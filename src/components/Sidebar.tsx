@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChefHat, Package, Thermometer, Flame, Sparkles, Tag, Droplet, ClipboardList, Archive, LogOut, Settings, ChevronLeft, ChevronRight, Home, X, Smartphone, QrCode, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { getInitials } from '../lib/utils';
+import { renderAvatarIcon } from './AvatarCustomizerModal';
 import { RestaurantLogo } from './ui/RestaurantLogo';
 import { useI18n } from '../lib/i18n';
 import { APP_NAME } from '../constants';
@@ -22,6 +23,22 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
   const { currentUser, logout } = useAuth();
   const { config } = useConfig();
   const { t } = useI18n();
+
+  const [showBottomFade, setShowBottomFade] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      setShowBottomFade(scrollHeight > clientHeight && Math.ceil(scrollTop + clientHeight) < scrollHeight);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [config.modules, currentView]);
 
   const navItems = [
     { id: 'dashboard', label: t('nav_dashboard'), icon: Home },
@@ -68,35 +85,61 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
           </button>
         </div>
         
-        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 no-scrollbar">
-          {navItems.map(item => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            const shownOnMobile = !isCollapsed || isMobileOpen;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentView(item.id)}
-                title={isCollapsed && !isMobileOpen ? item.label : undefined}
-                className={`w-full flex items-center gap-3 py-3 rounded-xl font-bold transition-all ${
-                  isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-4'
-                } ${
-                  isActive 
-                    ? 'bg-[var(--color-primary)] text-white shadow-md sidebar-item-active' 
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-                }`}
-              >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
-                {shownOnMobile && <span className="whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
-              </button>
-            )
-          })}
+        <div className="relative flex-1 overflow-hidden flex flex-col">
+          <div 
+            ref={scrollRef}
+            onScroll={checkScroll}
+            className="flex-1 overflow-y-auto py-6 px-4 space-y-2 no-scrollbar"
+          >
+            {navItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentView === item.id;
+              const shownOnMobile = !isCollapsed || isMobileOpen;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  title={isCollapsed && !isMobileOpen ? item.label : undefined}
+                  className={`w-full flex items-center gap-3 py-3 rounded-xl font-bold transition-all ${
+                    isCollapsed && !isMobileOpen ? 'md:justify-center px-0' : 'px-4'
+                  } ${
+                    isActive 
+                      ? 'bg-[var(--color-primary)] text-white shadow-md sidebar-item-active' 
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                  }`}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                  {shownOnMobile && <span className="whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
+                </button>
+              )
+            })}
+          </div>
+          {showBottomFade && (
+            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          )}
         </div>
 
         <div className={`p-4 border-t border-gray-100 flex flex-col gap-2`}>
           <div className={`flex items-center ${isCollapsed && !isMobileOpen ? 'md:justify-center' : 'gap-3 px-4'} py-2 bg-gray-50 rounded-xl mb-2`}>
-            <div className="w-8 h-8 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center font-bold shrink-0">
-              {currentUser ? getInitials(currentUser.name) : ''}
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 bg-cover bg-center shadow-sm"
+              style={{
+                backgroundColor: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? 'transparent' : (currentUser?.avatarColor || 'var(--color-primary)'),
+                backgroundImage: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : (!currentUser?.avatarType && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : 'none',
+                opacity: (!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 0.8 : 1,
+                color: (currentUser?.avatarColor) ? '#fff' : 'var(--color-primary)'
+              }}
+            >
+              {(!currentUser?.avatarUrl || currentUser?.avatarType !== 'photo') && (!currentUser?.avatarType || currentUser?.avatarType === 'monogram') && (
+                <span className={(!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 'text-[var(--color-primary)]' : 'text-white'}>
+                  {currentUser ? getInitials(currentUser.name) : ''}
+                </span>
+              )}
+              {currentUser?.avatarType === 'icon' && (
+                <div className="flex items-center justify-center text-white" style={{color: (currentUser?.avatarColor) ? '#fff' : 'var(--color-primary)'}}>
+                  {renderAvatarIcon(currentUser.avatarIcon, 16)}
+                </div>
+              )}
             </div>
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex flex-col overflow-hidden">

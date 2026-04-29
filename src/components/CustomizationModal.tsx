@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Store, Thermometer, Droplets, Sparkles, BookOpen, Users, UploadCloud, Shield, Box, Printer, Smartphone, Settings, Flame } from 'lucide-react';
+import { X, Store, Thermometer, Droplets, Sparkles, BookOpen, Users, UploadCloud, Shield, Box, Printer, Smartphone, Settings, Flame, CheckCircle2 } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { Button, Input, Label } from './ui/LightUI';
 
@@ -18,15 +18,36 @@ import { AuditTab } from './customization/AuditTab';
 import { SessionsTab } from './customization/SessionsTab';
 import { CuissonTab } from './customization/CuissonTab';
 import { ModulesTab } from './customization/ModulesTab';
-import { LayoutGrid } from 'lucide-react';
+import { ReceptionsTab } from './customization/ReceptionsTab';
+import { LayoutGrid, Truck } from 'lucide-react';
 
 export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClose: () => void, initialTab?: string }) => {
   const { config, updateConfig } = useConfig();
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    
+    const handleToast = (e: any) => {
+      setToastMessage(e.detail || '✓ Modification appliquée');
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setToastMessage(null);
+      }, 2000);
+    };
+
+    window.addEventListener('crousty_toast', handleToast);
+    return () => {
+      window.removeEventListener('crousty_toast', handleToast);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const tabs = [
     { id: 'identite', label: 'Identité', icon: <Store size={18} /> },
     { id: 'modules', label: 'Modules', icon: <LayoutGrid size={18} /> },
+    { id: 'receptions', label: 'Réceptions', icon: <Truck size={18} /> },
     { id: 'temperatures', label: 'Zones Températures', icon: <Thermometer size={18} /> },
     { id: 'cuisson', label: 'Cuisson Alimentaire', icon: <Flame size={18} /> },
     { id: 'huiles', label: 'Cuves d\'Huile', icon: <Droplets size={18} /> },
@@ -75,6 +96,7 @@ export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClo
           <div className="flex-1 p-8 overflow-y-auto bg-white">
             {activeTab === 'identite' && <IdentiteTab />}
             {activeTab === 'modules' && <ModulesTab />}
+            {activeTab === 'receptions' && <ReceptionsTab />}
             {activeTab === 'temperatures' && <TemperaturesTab />}
             {activeTab === 'cuisson' && <CuissonTab />}
             {activeTab === 'huiles' && <HuilesTab />}
@@ -99,6 +121,12 @@ export const CustomizationModal = ({ onClose, initialTab = 'identite' }: { onClo
           </div>
         </div>
       </div>
+      
+      {toastMessage && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[400] bg-[var(--color-primary)] text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-[var(--color-primary)]/30 animate-in fade-in slide-in-from-bottom-4 duration-300 pointer-events-none">
+          {toastMessage}
+        </div>
+      )}
     </div>,
     document.body
   );

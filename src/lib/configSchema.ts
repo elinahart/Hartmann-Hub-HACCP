@@ -87,6 +87,7 @@ export const ConfigSchema = z.object({
     logoBackgroundStyle: 'round',
     logoTextColor: '#FFFFFF'
   }),
+  fournisseurs: z.array(z.string()).default([]),
   employes: z.array(EmployeSchema).default([]),
   temperatures: z.array(TemperatureConfigSchema).default([]),
   huiles: z.array(HuileConfigSchema).default([]),
@@ -135,6 +136,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     logoBackgroundStyle: 'round',
     logoTextColor: '#FFFFFF'
   },
+  fournisseurs: [],
   employes: [
     { id: "emp-manager", name: "Manager", initiales: "M", role: "manager", actif: true, pin: "0000" },
     { id: "emp-equipier", name: "Équipier", initiales: "É", role: "equipe", actif: true, pin: "0000" }
@@ -227,6 +229,7 @@ export function deepMergeWithDefaults(imported: any, defaults: AppConfig = DEFAU
   // For arrays, we should REPLACE instead of MERGE when applying defaults or doing global imports
   // so we don't resurrect items that were deleted by the user. If the user's config provides it, use it.
   if (Array.isArray(imported.employes)) result.employes = imported.employes;
+  if (Array.isArray(imported.fournisseurs)) result.fournisseurs = imported.fournisseurs;
   if (Array.isArray(imported.temperatures)) result.temperatures = imported.temperatures;
   if (Array.isArray(imported.huiles)) result.huiles = imported.huiles;
   if (Array.isArray(imported.nettoyage)) result.nettoyage = imported.nettoyage;

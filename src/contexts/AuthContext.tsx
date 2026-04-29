@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setUsers = (newUsers: MembreEquipe[]) => {
     setUsersState(newUsers);
     setStoredData(STORAGE_KEY, newUsers);
+    window.dispatchEvent(new CustomEvent('crousty_toast'));
   };
 
   useEffect(() => {

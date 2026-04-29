@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Label, Button } from '../components/ui/LightUI';
+import { Card, Input, Label, Button, Select } from '../components/ui/LightUI';
 import { getStoredData, setStoredData, savePhoto, deletePhoto, getPhoto } from '../lib/db';
 import { Camera, Trash2, Check, CheckCircle2, X, ImageIcon, Plus, Trash } from 'lucide-react';
 import { createSignature } from '../lib/permissions';
 import { SaisieActions } from '../components/SaisieActions';
 import { SignatureSaisie } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfig } from '../contexts/ConfigContext';
 import { useAutoDraft } from '../hooks/useAutoDraft';
 import { logAuditEvent } from '../lib/audit';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -98,6 +99,7 @@ const ReceptionCard = ({ e, confirmDelete, deleteId, setDeleteId, currentUser }:
 
 export default function Receptions() {
   const { currentUser } = useAuth();
+  const { config } = useConfig();
   const [entries, setEntries] = useState<ReceptionEntry[]>([]);
   
   const [draft, setDraft, clearDraft, isDraftRestored] = useAutoDraft('reception_v3', {
@@ -106,8 +108,16 @@ export default function Receptions() {
     commentaire: ''
   });
 
+  const [isCustomFournisseur, setIsCustomFournisseur] = useState(false);
+
   const fournisseur = draft.fournisseur;
   const setFournisseur = (v: string) => setDraft(p => ({ ...p, fournisseur: v }));
+
+  useEffect(() => {
+    if (isDraftRestored && fournisseur && !config.fournisseurs?.includes(fournisseur)) {
+      setIsCustomFournisseur(true);
+    }
+  }, [isDraftRestored, fournisseur, config.fournisseurs]);
   
   const lignes = draft.lignes;
   const setLignes = (v: ReceptionProductLine[] | ((prev: ReceptionProductLine[]) => ReceptionProductLine[])) => 
@@ -293,9 +303,36 @@ export default function Receptions() {
         </div>
         
         <div className="space-y-6">
-          <div>
+          <div className="space-y-3">
             <Label>Fournisseur *</Label>
-            <Input value={fournisseur} onChange={(e: any) => setFournisseur(e.target.value)} placeholder="Ex: Sysco, Pomona..." />
+            <div className="space-y-2">
+              <Select 
+                value={isCustomFournisseur ? 'custom' : fournisseur} 
+                onChange={(e: any) => {
+                  if (e.target.value === 'custom') {
+                    setIsCustomFournisseur(true);
+                    setFournisseur('');
+                  } else {
+                    setIsCustomFournisseur(false);
+                    setFournisseur(e.target.value);
+                  }
+                }}
+              >
+                <option value="" disabled>Sélectionnez un fournisseur</option>
+                {config.fournisseurs?.map(f => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+                <option value="custom" className="italic font-bold">Personnalisé...</option>
+              </Select>
+              {isCustomFournisseur && (
+                <Input 
+                  value={fournisseur} 
+                  onChange={(e: any) => setFournisseur(e.target.value)} 
+                  placeholder="Entrez le nom du fournisseur" 
+                  autoFocus
+                />
+              )}
+            </div>
           </div>
 
           <div className="space-y-4">

@@ -182,6 +182,9 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           historique: storedInventaireHisto ? JSON.parse(storedInventaireHisto) : undefined
         };
       }
+      
+      const storedFournisseurs = localStorage.getItem('crousty-reception-fournisseurs');
+      if (storedFournisseurs) currentData.fournisseurs = JSON.parse(storedFournisseurs);
     } catch (e) {
       console.warn("Failed to sync latest module data", e);
     }
@@ -192,7 +195,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const merged = deepMergeWithDefaults({ ...config, ...newConfig }, config);
     setConfig(merged);
     localStorage.setItem('crousty-config', JSON.stringify(merged));
-    applyTheme(merged);
+    applyTheme(merged); window.dispatchEvent(new CustomEvent('crousty_toast'));
   };
 
   const parseImportPayload = (jsonString: string): { data: any, isExportFormat: boolean, moduleName?: ModuleName } => {

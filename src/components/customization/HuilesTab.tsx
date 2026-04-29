@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Droplets, Edit2, Trash2, Plus, Shield, Check, AlertTriangle } from 'lucide-react';
+import { Droplets, Edit2, Trash2, Plus, Shield, Check, AlertTriangle, GripVertical } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { Button, Input, Label } from '../ui/LightUI';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
+import { motion, Reorder } from 'motion/react';
 
 import { useHuiles } from '../../providers/HuilesProvider';
 
@@ -179,14 +180,23 @@ export const HuilesTab = () => {
         </div>
       )}
 
-      <div className="space-y-3">
+      <Reorder.Group axis="y" values={huiles} onReorder={(newOrder) => {
+        setCuves(newOrder);
+        updateConfig({ huiles: newOrder });
+      }} className="space-y-3">
         {huiles.map((h: any) => (
-          <div 
+          <Reorder.Item 
             key={h.id} 
+            value={h}
+            dragListener={!isSelectionMode && editingId !== h.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+          <div 
             onClick={() => isSelectionMode && toggleSelection(h.id)}
             className={cn(
-              "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all cursor-pointer",
-              editingId === h.id ? "border-crousty-purple ring-2 ring-purple-50" : "border-gray-100",
+              "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all cursor-pointer relative group",
+              editingId === h.id ? "border-crousty-purple ring-2 ring-purple-50 z-10" : "border-gray-100",
               selectedIds.includes(h.id) && "border-amber-400 bg-amber-50/20"
             )}
           >
@@ -197,7 +207,7 @@ export const HuilesTab = () => {
                 <Button onClick={handleSave} className="bg-crousty-purple text-white font-bold">Enregistrer</Button>
               </div>
             ) : (
-              <div className="flex items-center justify-between p-4 mix-h-[44px]">
+              <div className="flex items-center justify-between p-4 min-h-[44px]">
                 <div className="flex items-center gap-3">
                   {isSelectionMode && (
                     <div className={cn(
@@ -206,6 +216,9 @@ export const HuilesTab = () => {
                     )}>
                       {selectedIds.includes(h.id) && <Check size={12} className="text-white" />}
                     </div>
+                  )}
+                  {!isSelectionMode && (
+                    <GripVertical className="text-gray-200 cursor-grab active:cursor-grabbing group-hover:text-gray-400" size={20} />
                   )}
                   <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-yellow-50 text-yellow-600">
                     <Droplets size={20} />
@@ -227,7 +240,9 @@ export const HuilesTab = () => {
               </div>
             )}
           </div>
+          </Reorder.Item>
         ))}
+      </Reorder.Group>
 
         {confirmDelete && (
           <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -274,7 +289,6 @@ export const HuilesTab = () => {
             <p className="text-gray-500 font-medium tracking-tight">Aucune cuve configurée.</p>
           </div>
         )}
-      </div>
     </div>
   );
 };

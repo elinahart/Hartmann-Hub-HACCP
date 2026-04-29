@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Thermometer, Edit2, Trash2, Plus, Snowflake, Shield, Check, AlertTriangle } from 'lucide-react';
+import { Thermometer, Edit2, Trash2, Plus, Snowflake, Shield, Check, AlertTriangle, GripVertical } from 'lucide-react';
 import { useConfig } from '../../contexts/ConfigContext';
 import { Button, Input, Label } from '../ui/LightUI';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
+import { motion, Reorder } from 'motion/react';
 
 import { useTemperatures } from '../../providers/TemperaturesProvider';
 
@@ -195,14 +196,23 @@ export const TemperaturesTab = () => {
         </div>
       )}
 
-      <div className="space-y-3">
+      <Reorder.Group axis="y" values={temperatures} onReorder={(newOrder) => {
+        setZones(newOrder);
+        updateConfig({ temperatures: newOrder });
+      }} className="space-y-3">
         {temperatures.map((t: any) => (
-          <div 
+          <Reorder.Item 
             key={t.id} 
+            value={t}
+            dragListener={!isSelectionMode && editingId !== t.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div
             onClick={() => isSelectionMode && toggleSelection(t.id)}
             className={cn(
-              "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all cursor-pointer",
-              editingId === t.id ? "border-crousty-purple ring-2 ring-purple-50" : "border-gray-100",
+              "border rounded-2xl bg-white overflow-hidden shadow-sm transition-all cursor-pointer relative group",
+              editingId === t.id ? "border-crousty-purple ring-2 ring-purple-50 z-10" : "border-gray-100",
               selectedIds.includes(t.id) && "border-amber-400 bg-amber-50/20"
             )}
           >
@@ -277,7 +287,9 @@ export const TemperaturesTab = () => {
               </div>
             )}
           </div>
+          </Reorder.Item>
         ))}
+      </Reorder.Group>
 
         {confirmDelete && (
           <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -353,7 +365,6 @@ export const TemperaturesTab = () => {
             <p className="text-gray-500 font-medium tracking-tight">Aucune zone configurée.</p>
           </div>
         )}
-      </div>
     </div>
   );
 };

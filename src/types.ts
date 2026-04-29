@@ -140,6 +140,10 @@ export interface MembreEquipe {
   couleur?: string;
   pin?: string;
   mustChangePin?: boolean;
+  avatarUrl?: string;
+  avatarType?: 'photo' | 'monogram' | 'icon';
+  avatarIcon?: string;
+  avatarColor?: string;
 }
 
 export interface ConfigHuiles {

@@ -94,7 +94,7 @@ export const ImpressionTab = () => {
               <div>
                 <Label className="text-sm font-bold text-gray-600 mb-1">Nom du Restaurant</Label>
                 <Input 
-                  value={settings.restaurantName} 
+                  value={settings.restaurantName ?? config.restaurant.nom} 
                   onChange={(e: any) => updateSetting('restaurantName', e.target.value)}
                   className="h-14 font-medium"
                   placeholder={`Ex: ${config.restaurant.nom}`}

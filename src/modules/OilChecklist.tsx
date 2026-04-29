@@ -654,11 +654,13 @@ export default function OilChecklist() {
                    </div>
                 )}
 
-                <label className={`w-full flex items-center justify-center gap-3 p-4 text-white rounded-2xl font-black text-sm shadow-sm active:scale-95 transition-all cursor-pointer mt-auto ${
+                <label 
+                  className={`w-full flex items-center justify-center gap-3 p-4 text-white rounded-2xl font-black text-sm shadow-sm active:scale-95 transition-all cursor-pointer mt-auto ${
                    statut === 'changer' && !isChangedSince ? 'bg-red-600 hover:bg-red-700' :
-                   statut === 'attention' && !isChangedSince ? 'bg-amber-500 hover:bg-amber-600' :
-                   'bg-indigo-600 hover:bg-indigo-700'
-                }`}>
+                   statut === 'attention' && !isChangedSince ? 'bg-amber-500 hover:bg-amber-600' : ''
+                }`}
+                  style={!(statut === 'changer' && !isChangedSince) && !(statut === 'attention' && !isChangedSince) ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                >
                   <input 
                     type="file" 
                     accept="image/*" 

@@ -299,10 +299,10 @@ export const EquipeTab = () => {
                       )}
                       
                       <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md shrink-0"
-                        style={{ backgroundColor: getCouleurProfil(u.name, u.role) }}
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md shrink-0 bg-cover bg-center"
+                        style={u.avatarUrl ? { backgroundImage: `url(${u.avatarUrl})` } : { backgroundColor: getCouleurProfil(u.name, u.role) }}
                       >
-                        {u.initiales}
+                        {!u.avatarUrl && u.initiales}
                       </div>
                       
                       <div className="flex-1 min-w-0">
@@ -357,6 +357,39 @@ export const EquipeTab = () => {
                         onClick={e => e.stopPropagation()}
                       >
                         <div className="pt-4 mt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+                          <div className="col-span-2">
+                            <Label className="text-[9px] font-black uppercase text-gray-400">Photo de profil</Label>
+                            <div className="mt-1 flex items-center gap-4">
+                              <label className="flex-1 h-10 border border-gray-200 rounded-xl flex items-center justify-center text-xs font-bold text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <span className="flex items-center gap-2">
+                                  <UserCircle size={16} /> Ajouter une photo
+                                </span>
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  className="hidden" 
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        handleUpdateMember({ ...u, avatarUrl: reader.result as string });
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                />
+                              </label>
+                              {u.avatarUrl && (
+                                <button 
+                                  onClick={() => handleUpdateMember({ ...u, avatarUrl: undefined })}
+                                  className="h-10 px-4 flex items-center justify-center rounded-xl bg-red-50 text-red-500 text-xs font-bold hover:bg-red-100 transition-colors"
+                                >
+                                  Retirer
+                                </button>
+                              )}
+                            </div>
+                          </div>
                           <div>
                             <Label className="text-[9px] font-black uppercase text-gray-400">Nouveau PIN</Label>
                             <Input 

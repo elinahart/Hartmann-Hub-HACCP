@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink, Shield } from 'lucide-react';
+import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink, Shield, Camera } from 'lucide-react';
 import { Button, Input, Select, Label } from './ui/LightUI';
 import { clearAllData, getStoredData, setStoredData } from '../lib/db';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
@@ -12,12 +12,16 @@ import { useConfig } from '../contexts/ConfigContext';
 import { useI18n } from '../lib/i18n';
 import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_DESCRIPTION, APP_LAST_UPDATE, APP_CONTACT, APP_CHANGELOG } from '../constants';
 
+import { AvatarCustomizerModal, renderAvatarIcon } from './AvatarCustomizerModal';
+
 export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
   const { users, addUser, deleteUser, updateUserPin, currentUser, logout, updateUser, setUsers } = useAuth();
   const { isPersistent, estimate } = usePersistentStorage();
   const { exportConfig, importConfig } = useConfig();
   const { t, language, setLanguage } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
+  
+  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'profile' | 'about'>('profile');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -269,12 +273,39 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
                   <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                     <UserCircle size={80} />
                   </div>
-                  <div 
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-white font-black text-2xl mb-3 shadow-lg ring-4 ring-white"
-                    style={{ backgroundColor: getCouleurProfil(currentUser.name, currentUser.role) }}
+                  <button 
+                    onClick={() => setShowAvatarCustomizer(true)}
+                    className="relative cursor-pointer group flex flex-col items-center outline-none"
                   >
-                    {currentUser.initiales || currentUser.name.charAt(0).toUpperCase()}
-                  </div>
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-white font-black text-2xl mb-3 shadow-lg ring-4 ring-white bg-cover bg-center transition-all group-hover:opacity-80"
+                      style={{
+                        backgroundColor: (currentUser.avatarType === 'photo' && currentUser.avatarUrl) ? 'transparent' : (currentUser.avatarColor || getCouleurProfil(currentUser.name, currentUser.role)),
+                        backgroundImage: (currentUser.avatarType === 'photo' && currentUser.avatarUrl) ? `url(${currentUser.avatarUrl})` : (!currentUser.avatarType && currentUser.avatarUrl) ? `url(${currentUser.avatarUrl})` : 'none'
+                      }}
+                    >
+                      {(!currentUser.avatarUrl || currentUser.avatarType !== 'photo') && (!currentUser.avatarType || currentUser.avatarType === 'monogram') && (currentUser.initiales || currentUser.name.charAt(0).toUpperCase())}
+                      {currentUser.avatarType === 'icon' && (
+                        <div className="flex items-center justify-center">
+                          {renderAvatarIcon(currentUser.avatarIcon, 32)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 top-0 h-16 w-16 mx-auto bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera size={20} className="text-white" />
+                    </div>
+                  </button>
+                  {currentUser.avatarUrl && (
+                    <button 
+                      onClick={() => {
+                        updateUser(currentUser.id, { ...currentUser, avatarUrl: undefined, avatarType: 'monogram' });
+                        window.dispatchEvent(new CustomEvent('crousty_toast', { detail: 'Photo de profil retirée' }));
+                      }}
+                      className="text-[10px] font-bold text-red-500 hover:text-red-600 mb-2 -mt-1 transition-colors"
+                    >
+                      Retirer la photo
+                    </button>
+                  )}
                   <h3 className="font-black text-xl text-gray-800 tracking-tight text-center">{currentUser.name}</h3>
                   <div className="text-[9px] font-black text-white bg-crousty-purple px-3 py-1 rounded-full mt-1.5 uppercase tracking-[0.2em] shadow-sm">
                     {currentUser.role}
@@ -484,6 +515,17 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {showAvatarCustomizer && currentUser && (
+        <AvatarCustomizerModal 
+          user={currentUser}
+          onClose={() => setShowAvatarCustomizer(false)}
+          onSave={(updates) => {
+            updateUser(currentUser.id, { ...currentUser, ...updates });
+            window.dispatchEvent(new CustomEvent('crousty_toast', { detail: 'Profil mis à jour' }));
+          }}
+        />
       )}
 
     </div>,

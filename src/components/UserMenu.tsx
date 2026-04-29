@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { User, LogOut, Lock } from 'lucide-react';
-import { getInitials } from '../lib/utils';
-import { renderAvatarIcon } from './AvatarCustomizerModal';
+import { getInitials, getCouleurProfil } from '../lib/utils';
+import { UserAvatar } from './UserAvatar';
 
 export const UserMenu = () => {
   const { currentUser, logout } = useAuth();
@@ -43,26 +43,11 @@ export const UserMenu = () => {
         data-dropdown-trigger
         className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl font-black text-gray-800 transition-colors shadow-sm active:scale-95 min-h-[40px]"
       >
-        <div 
-          className="w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0 bg-cover bg-center shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] -ml-1 text-[10px]"
-          style={{
-            backgroundColor: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? 'transparent' : (currentUser?.avatarColor || 'var(--color-primary)'),
-            backgroundImage: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : (!currentUser?.avatarType && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : 'none',
-            opacity: (!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 0.2 : 1, // subtle background if no color
-            color: (!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 'var(--color-primary)' : '#fff'
-          }}
-        >
-          {(!currentUser?.avatarUrl || currentUser?.avatarType !== 'photo') && (!currentUser?.avatarType || currentUser?.avatarType === 'monogram') && (
-            <span style={{opacity: (!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 10 : 1}}>
-              {getInitials(currentUser.name || "")}
-            </span>
-          )}
-          {currentUser?.avatarType === 'icon' && (
-            <div className="flex items-center justify-center">
-              {renderAvatarIcon(currentUser.avatarIcon, 12)}
-            </div>
-          )}
-        </div>
+        <UserAvatar 
+          user={currentUser} 
+          className="w-6 h-6 shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] -ml-1 text-[10px] font-bold object-cover" 
+          iconSize={12} 
+        />
         <span className="text-sm tracking-tight">{currentUser.name.split(' ')[0]}</span>
         <span className="text-[10px] text-gray-400">▼</span>
       </button>

@@ -5,6 +5,7 @@ import { Button, Input, Label, Select } from '../ui/LightUI';
 import { getInitials, getCouleurProfil, cn } from '../../lib/utils';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
 import { MembreEquipe } from '../../types';
+import { UserAvatar } from '../UserAvatar';
 
 export const EquipeTab = () => {
   const { users, addUser, deleteUser, updateUser, setUsers, currentUser } = useAuth();
@@ -298,12 +299,11 @@ export const EquipeTab = () => {
                         <GripVertical className="text-gray-200 cursor-grab active:cursor-grabbing group-hover:text-gray-400" size={20} />
                       )}
                       
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md shrink-0 bg-cover bg-center"
-                        style={u.avatarUrl ? { backgroundImage: `url(${u.avatarUrl})` } : { backgroundColor: getCouleurProfil(u.name, u.role) }}
-                      >
-                        {!u.avatarUrl && u.initiales}
-                      </div>
+                      <UserAvatar 
+                        user={u} 
+                        className="w-12 h-12 text-lg shadow-md" 
+                        iconSize={24} 
+                      />
                       
                       <div className="flex-1 min-w-0">
                         <div className="font-black text-gray-800 text-lg truncate leading-tight">{u.name}</div>
@@ -368,14 +368,16 @@ export const EquipeTab = () => {
                                   type="file" 
                                   accept="image/*" 
                                   className="hidden" 
-                                  onChange={(e) => {
+                                  onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        handleUpdateMember({ ...u, avatarUrl: reader.result as string });
-                                      };
-                                      reader.readAsDataURL(file);
+                                      try {
+                                        const { compressPhotoTLC } = await import('../../lib/imageUtils');
+                                        const base64 = await compressPhotoTLC(file, 150, 0.6);
+                                        handleUpdateMember({ ...u, avatarUrl: base64, avatarType: 'photo' });
+                                      } catch (err) {
+                                        console.error("Erreur compression avatar:", err);
+                                      }
                                     }
                                   }}
                                 />

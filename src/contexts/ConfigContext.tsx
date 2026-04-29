@@ -194,7 +194,14 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateConfig = (newConfig: Partial<AppConfig>) => {
     const merged = deepMergeWithDefaults({ ...config, ...newConfig }, config);
     setConfig(merged);
-    localStorage.setItem('crousty-config', JSON.stringify(merged));
+    try {
+      localStorage.setItem('crousty-config', JSON.stringify(merged));
+    } catch (e: any) {
+      if (e.name === 'QuotaExceededError' || (e.message && e.message.toLowerCase().includes('stockage'))) {
+        alert("Attention : l'espace de stockage est presque saturé ! Vos derniers changements de configuration pourraient ne pas être sauvegardés. Veuillez purger d'anciennes données.");
+        console.error("Quota Exceeded in ConfigContext updateConfig:", e);
+      }
+    }
     applyTheme(merged); window.dispatchEvent(new CustomEvent('crousty_toast'));
   };
 
@@ -261,7 +268,14 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Final validation and save
       const verifiedConfig = deepMergeWithDefaults(newConfig, DEFAULT_CONFIG);
       setConfig(verifiedConfig);
-      localStorage.setItem('crousty-config', JSON.stringify(verifiedConfig));
+      try {
+        localStorage.setItem('crousty-config', JSON.stringify(verifiedConfig));
+      } catch (e: any) {
+        if (e.name === 'QuotaExceededError' || e.message?.toLowerCase().includes('stockage')) {
+          alert("Espace insuffisant pour importer toutes ces configurations. L'import a été appliqué en mémoire mais risque d'être perdu.");
+          console.error("Quota Exceeded inside importConfig:", e);
+        }
+      }
       applyTheme(verifiedConfig);
 
       // Sync module-specific storages and dispatch events

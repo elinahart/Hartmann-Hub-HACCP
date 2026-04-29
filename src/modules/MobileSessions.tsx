@@ -948,7 +948,8 @@ const ImportPreviewModal = ({ session, onClose, onImported }: { session: MobileS
                </div>
                
                <div className="flex-1 overflow-y-auto space-y-6 pr-2 py-2 min-h-0 text-left">
-                  {Object.entries(previewData).map(([modId, items]) => {
+                  {Object.entries(previewData).map(([modId, itemsUncast]) => {
+                     const items = itemsUncast as any[];
                      const modApp = MODULES_LIST.find(m => m.id === modId);
                      if (!items || items.length === 0) return null;
                      return (

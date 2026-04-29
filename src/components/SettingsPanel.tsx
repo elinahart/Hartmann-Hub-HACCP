@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink, Shield, Camera } from 'lucide-react';
+import { Sparkles, Trash2, UserPlus, Users, X, KeySquare, UserCircle, Printer, HelpCircle, Smartphone, Wifi, CheckCircle2, Archive, GripVertical, AlertTriangle, ToggleLeft, ToggleRight, Eye, ChevronRight, Info, Languages, Copy, ExternalLink, Shield, Camera, Edit2 } from 'lucide-react';
 import { Button, Input, Select, Label } from './ui/LightUI';
 import { clearAllData, getStoredData, setStoredData } from '../lib/db';
 import { motion, AnimatePresence, Reorder } from 'motion/react';
@@ -13,6 +13,7 @@ import { useI18n } from '../lib/i18n';
 import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_DESCRIPTION, APP_LAST_UPDATE, APP_CONTACT, APP_CHANGELOG } from '../constants';
 
 import { AvatarCustomizerModal, renderAvatarIcon } from './AvatarCustomizerModal';
+import { UserAvatar } from './UserAvatar';
 
 export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
   const { users, addUser, deleteUser, updateUserPin, currentUser, logout, updateUser, setUsers } = useAuth();
@@ -70,6 +71,12 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
   // Fermer le panneau si on clique en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      // Ne pas fermer si la modal de personnalisation d'avatar ou importer est ouverte (elles sont en portal sur le body)
+      if (showAvatarCustomizer || showImportModal || isResetModalOpen || isChangelogOpen) return;
+      
+      // Ne pas fermer si on clique sur un select/dropdown
+      if ((event.target as Element).closest?.('[data-portal], .lucide')) return;
+
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         onClose();
       }
@@ -82,7 +89,7 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
       document.removeEventListener('mousedown', handleClickOutside, true);
       document.removeEventListener('touchstart', handleClickOutside, true);
     };
-  }, [onClose]);
+  }, [onClose, showAvatarCustomizer, showImportModal, isResetModalOpen, isChangelogOpen]);
 
   const handleAddUser = () => {
     if (!newName || !newPin) return;
@@ -269,47 +276,57 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
                   </section>
                 )}
 
-                <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                    <UserCircle size={80} />
+                <div className="bg-gradient-to-br from-white to-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
+                  <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none scale-150 origin-top-right">
+                    <UserCircle size={120} />
                   </div>
+                  
                   <button 
                     onClick={() => setShowAvatarCustomizer(true)}
-                    className="relative cursor-pointer group flex flex-col items-center outline-none"
+                    className="relative cursor-pointer group flex flex-col items-center outline-none mb-6"
                   >
-                    <div 
-                      className="w-16 h-16 rounded-full flex items-center justify-center text-white font-black text-2xl mb-3 shadow-lg ring-4 ring-white bg-cover bg-center transition-all group-hover:opacity-80"
-                      style={{
-                        backgroundColor: (currentUser.avatarType === 'photo' && currentUser.avatarUrl) ? 'transparent' : (currentUser.avatarColor || getCouleurProfil(currentUser.name, currentUser.role)),
-                        backgroundImage: (currentUser.avatarType === 'photo' && currentUser.avatarUrl) ? `url(${currentUser.avatarUrl})` : (!currentUser.avatarType && currentUser.avatarUrl) ? `url(${currentUser.avatarUrl})` : 'none'
-                      }}
-                    >
-                      {(!currentUser.avatarUrl || currentUser.avatarType !== 'photo') && (!currentUser.avatarType || currentUser.avatarType === 'monogram') && (currentUser.initiales || currentUser.name.charAt(0).toUpperCase())}
-                      {currentUser.avatarType === 'icon' && (
-                        <div className="flex items-center justify-center">
-                          {renderAvatarIcon(currentUser.avatarIcon, 32)}
+                    <div className="relative">
+                      <UserAvatar 
+                        user={currentUser}
+                        className="w-24 h-24 text-4xl shadow-xl ring-8 ring-white/80 group-hover:scale-105 transition-all duration-300"
+                        iconSize={48}
+                      />
+                      <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-[2px]">
+                        <Camera size={28} className="text-white drop-shadow-md" />
+                      </div>
+                      <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full p-1 shadow-md">
+                        <div className="w-full h-full bg-crousty-purple text-white rounded-full flex items-center justify-center">
+                          <Edit2 size={16} />
                         </div>
-                      )}
-                    </div>
-                    <div className="absolute inset-0 top-0 h-16 w-16 mx-auto bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera size={20} className="text-white" />
+                      </div>
                     </div>
                   </button>
-                  {currentUser.avatarUrl && (
+                  
+                  <div className="text-center space-y-1 mb-6">
+                    <h3 className="font-black text-2xl text-gray-800 tracking-tight">{currentUser.name}</h3>
+                    <div className="inline-flex items-center justify-center px-4 py-1.5 bg-crousty-purple/10 text-crousty-purple text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                      {currentUser.role}
+                    </div>
+                  </div>
+
+                  <Button 
+                    className="w-full h-12 rounded-2xl bg-gray-900 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-gray-900/20 hover:bg-black transition-all"
+                    onClick={() => setShowAvatarCustomizer(true)}
+                  >
+                    Personnaliser le profil
+                  </Button>
+                  
+                  {currentUser.avatarType === 'photo' && currentUser.avatarUrl && (
                     <button 
                       onClick={() => {
-                        updateUser(currentUser.id, { ...currentUser, avatarUrl: undefined, avatarType: 'monogram' });
+                        updateUser({ ...currentUser, avatarUrl: undefined, avatarType: 'monogram' });
                         window.dispatchEvent(new CustomEvent('crousty_toast', { detail: 'Photo de profil retirée' }));
                       }}
-                      className="text-[10px] font-bold text-red-500 hover:text-red-600 mb-2 -mt-1 transition-colors"
+                      className="text-[10px] font-bold text-red-500 hover:text-red-600 mt-4 transition-colors"
                     >
                       Retirer la photo
                     </button>
                   )}
-                  <h3 className="font-black text-xl text-gray-800 tracking-tight text-center">{currentUser.name}</h3>
-                  <div className="text-[9px] font-black text-white bg-crousty-purple px-3 py-1 rounded-full mt-1.5 uppercase tracking-[0.2em] shadow-sm">
-                    {currentUser.role}
-                  </div>
                 </div>
 
                 <div className="bg-white p-5 rounded-3xl border border-gray-100 space-y-4 shadow-sm">
@@ -522,7 +539,7 @@ export const SettingsPanel = ({ onClose }: { onClose: () => void }) => {
           user={currentUser}
           onClose={() => setShowAvatarCustomizer(false)}
           onSave={(updates) => {
-            updateUser(currentUser.id, { ...currentUser, ...updates });
+            updateUser({ ...currentUser, ...updates });
             window.dispatchEvent(new CustomEvent('crousty_toast', { detail: 'Profil mis à jour' }));
           }}
         />

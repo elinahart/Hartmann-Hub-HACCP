@@ -23,13 +23,34 @@ const INITIAL_TEAM: Omit<MembreEquipe, 'id' | 'dateCreation' | 'ordre'>[] = [
 const STORAGE_KEY = 'crousty-equipe-membres';
 const LEGACY_KEY = 'crousty_users';
 
+const safeSaveUsers = (key: string, data: MembreEquipe[]) => {
+  try {
+    setStoredData(key, data);
+    return data;
+  } catch (e: any) {
+    if (e.message && e.message.toLowerCase().includes('stockage')) {
+      console.warn('Quota exceeded when saving users. Stripping avatars as fallback.');
+      const strippedData = data.map(u => ({ ...u, avatarUrl: undefined }));
+      try {
+        setStoredData(key, strippedData);
+        alert("Espace de stockage saturé. Les photos de profil ont été retirées pour libérer de l'espace.");
+        return strippedData;
+      } catch (e2) {
+        console.error("Toujours erreur de quota même sans avatars :", e2);
+        alert("Erreur critique : espace de stockage plein. Veuillez vider le cache du navigateur.");
+      }
+    }
+  }
+  return data;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<MembreEquipe | null>(null);
   const [users, setUsersState] = useState<MembreEquipe[]>([]);
 
   const setUsers = (newUsers: MembreEquipe[]) => {
-    setUsersState(newUsers);
-    setStoredData(STORAGE_KEY, newUsers);
+    const finalUsers = safeSaveUsers(STORAGE_KEY, newUsers);
+    setUsersState(finalUsers);
     window.dispatchEvent(new CustomEvent('crousty_toast'));
   };
 
@@ -42,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const legacy = getStoredData<MembreEquipe[]>(LEGACY_KEY, []);
         if (legacy.length > 0) {
           storedUsers = legacy;
-          setStoredData(STORAGE_KEY, storedUsers);
+          storedUsers = safeSaveUsers(STORAGE_KEY, storedUsers);
         }
       }
       
@@ -66,9 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             changed = true;
             updated.role = 'manager';
           }
+          if (u.avatarUrl && u.avatarUrl.length > 100000) {
+            changed = true;
+            delete updated.avatarUrl;
+          }
           return updated;
         });
-        if (changed) setStoredData(STORAGE_KEY, storedUsers);
+        if (changed) {
+          storedUsers = safeSaveUsers(STORAGE_KEY, storedUsers);
+        }
       }
       
       if (storedUsers.length === 0) {
@@ -79,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ordre: i,
           actif: true
         }));
-        setStoredData(STORAGE_KEY, storedUsers);
+        storedUsers = safeSaveUsers(STORAGE_KEY, storedUsers);
       }
       
       setUsersState(storedUsers);

@@ -7,6 +7,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { MembreEquipe } from '../types';
 import { QRScanner } from './QRScanner';
 import { HoneycombWatch } from './HoneycombWatch';
+import { renderAvatarIcon } from './AvatarCustomizerModal';
+import { UserAvatar } from './UserAvatar';
 
 export const LoginScreen = () => {
   const { login, users } = useAuth();
@@ -195,10 +197,10 @@ export const LoginScreen = () => {
             exit={{ opacity: 0, scale: 0.95 }}
             className="w-full max-w-5xl flex flex-col h-screen"
           >
-            {/* Header section matching user photo */}
+            {/* Header section */}
             <div className="flex flex-col items-center mt-12 mb-10">
               <div className="w-20 h-20 bg-[var(--color-primary)] rounded-full flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-[var(--color-primary)]/10 mb-6 ring-8 ring-white">
-                CG
+                <Shield size={32} />
               </div>
               <h1 className="text-4xl font-black text-gray-800 tracking-tighter mb-1">Accès Équipe</h1>
               <p className="text-gray-400 font-bold text-sm tracking-tight">Utilisez votre code PIN pour accéder</p>
@@ -308,15 +310,14 @@ export const LoginScreen = () => {
                                   )}
                               >
                                 <div className="flex items-center gap-4">
-                                  <div 
+                                  <UserAvatar 
+                                    user={u}
                                     className={cn(
-                                      "w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm border-2 border-white/50 transition-transform",
+                                      "w-10 h-10 text-sm border-2 border-white/50 transition-transform",
                                       tapProfileId === u.id && "scale-110"
                                     )}
-                                    style={{ backgroundColor: getCouleurProfil(u.name, u.role) }}
-                                  >
-                                    {u.initiales}
-                                  </div>
+                                    iconSize={20}
+                                  />
                                   <div className="text-left">
                                     <div className="font-black text-base leading-tight truncate max-w-[200px]">{u.name}</div>
                                     <div className={cn("text-[10px] font-bold uppercase tracking-widest", tapProfileId === u.id ? "text-white/70" : "text-gray-400")}>
@@ -377,12 +378,11 @@ export const LoginScreen = () => {
               <ChevronLeft size={24} />
             </button>
 
-            <div 
-              className="w-20 h-20 rounded-full flex items-center justify-center text-white font-black text-3xl shadow-lg mx-auto mb-6 border-4 border-white"
-              style={{ backgroundColor: getCouleurProfil(selectedUser?.name || '', selectedUser?.role) }}
-            >
-              {selectedUser?.initiales}
-            </div>
+            <UserAvatar 
+              user={selectedUser || null}
+              className="w-20 h-20 text-3xl shadow-lg mx-auto mb-6 border-4 border-white"
+              iconSize={40}
+            />
             
             <h1 className="text-2xl font-black text-gray-800 mb-1">{selectedUser?.name}</h1>
             <p className="text-gray-500 mb-8 font-medium">Saisissez votre code PIN</p>
@@ -431,4 +431,3 @@ export const LoginScreen = () => {
     </div>
   );
 };
-

@@ -50,22 +50,45 @@ export default function InventaireIntelligent() {
       return rd >= dOldest && rd <= dNewest;
     });
 
+    const getPrimaryUnitInfo = (cat: string, name: string) => {
+      let sumCartons = 0;
+      let sumUnits = 0;
+      selectedInventories.forEach(inv => {
+         sumCartons += parseInt(inv.items?.[cat]?.[name]?.cartons || '0');
+         sumUnits += parseInt(inv.items?.[cat]?.[name]?.units || '0');
+      });
+      // Si on compte majoritairement en cartons, le produit est de type "carton"
+      const isCarton = sumCartons > 0 && sumUnits < sumCartons * 5;
+      return isCarton ? 'carton' : 'unité';
+    };
+
     const calculateTotalUnits = (cat: string, name: string, items: InvItems) => {
       const detail = items[cat]?.[name];
       if (!detail || detail.na) return 0;
       return parseInt(detail.units || '0') + (parseInt(detail.cartons || '0') * 5);
     };
 
-    const getDeliveredUnits = (prodName: string) => {
+    const getDeliveredUnits = (prodName: string, primaryUnit: 'carton' | 'unité') => {
       let total = 0;
       relevantDeliveries.forEach(rec => {
         rec.lignes?.forEach((l: any) => {
           if (l.produit === prodName) {
             const num = parseInt(l.quantite);
             if (!isNaN(num)) {
-               // Assuming delivery is in units. If they write "2 cartons", parseInt("2 cartons") = 2. 
-               // So if they mean cartons it might be undercounted. We will try to parse "carton".
-               const isCarton = l.quantite.toLowerCase().includes('carton') || l.quantite.toLowerCase().includes('colis');
+               const isCartonExplicit = l.quantite.toLowerCase().includes('cart') || l.quantite.toLowerCase().includes('colis');
+               const isUniteExplicit = l.quantite.toLowerCase().includes(' u.') || l.quantite.toLowerCase().includes(' u');
+               
+               let isCarton = isCartonExplicit;
+               
+               // Inférence intelligente si ni carton ni unité n'est précisé
+               if (!isCartonExplicit && !isUniteExplicit) {
+                  // Si on gère ce produit en cartons, et que la livraisons est un petit chiffre (e.g. 2 ou 3)
+                  // On est très probablement face à une livraison de cartons.
+                  if (primaryUnit === 'carton' && num < 50) {
+                     isCarton = true;
+                  }
+               }
+
                total += isCarton ? num * 5 : num;
             }
           }
@@ -77,38 +100,56 @@ export default function InventaireIntelligent() {
     const results = [];
 
     for (const p of products) {
+       const primaryUnit = getPrimaryUnitInfo(p.category, p.name);
        const stockOlder = calculateTotalUnits(p.category, p.name, oldest.items);
        const stockNewer = calculateTotalUnits(p.category, p.name, newest.items);
-       const delivered = getDeliveredUnits(p.name);
+       const delivered = getDeliveredUnits(p.name, primaryUnit);
        
-       // S_old + D - S_new = Consumption
-       const consumption = stockOlder + delivered - stockNewer;
+       // Consommation = Ancien Stock + Livraison - Nouveau Stock
+       let consumption = stockOlder + delivered - stockNewer;
+       let hasAnomaly = false;
+
+       // Si la consommation est négative, c'est qu'il y a plus de stock que prévu.
+       // (Ex: recomptage inattendu, livraison non rentrée, conversion unité/carton erronée)
+       if (consumption < 0) {
+          hasAnomaly = true;
+          // Pour la prévision, on force une consommation à 0. L'IA note l'anomalie.
+          consumption = 0;
+       }
        
-       // Average per day
+       // Moyenne par jour
        const avgPerDay = consumption > 0 ? consumption / daysDiff : 0;
        
-       // Trend logic (we can look at intermediate inventories if compareCount > 2)
-       // Let's do simple risk
        const daysUntilEmpty = avgPerDay > 0 ? stockNewer / avgPerDay : 999;
        
-       const isRisk = daysUntilEmpty <= 3; // risk if empty in <= 3 days
-       const isWait = daysUntilEmpty <= 7;
+       const isRisk = daysUntilEmpty <= 3 && !hasAnomaly;
        
-       if (stockOlder > 0 || stockNewer > 0 || delivered > 0 || consumption !== 0) {
+       // Adapter l'affichage pour l'unité primaire (Si carton on divise par 5)
+       const displayFactor = primaryUnit === 'carton' ? 5 : 1;
+
+       if (stockOlder > 0 || stockNewer > 0 || delivered > 0 || consumption !== 0 || hasAnomaly) {
          results.push({
            product: p,
-           stockOlder,
-           stockNewer,
-           delivered,
-           consumption,
-           avgPerDay,
+           primaryUnit,
+           displayFactor,
+           stockOlder: (stockOlder / displayFactor).toFixed(primaryUnit === 'carton' ? 1 : 0).replace('.0', ''),
+           stockNewer: (stockNewer / displayFactor).toFixed(primaryUnit === 'carton' ? 1 : 0).replace('.0', ''),
+           delivered: (delivered / displayFactor).toFixed(primaryUnit === 'carton' ? 1 : 0).replace('.0', ''),
+           consumption: (consumption / displayFactor).toFixed(2),
+           avgPerDay: (avgPerDay / displayFactor).toFixed(2),
            daysUntilEmpty,
-           isRisk
+           isRisk,
+           hasAnomaly
          });
        }
     }
     
-    results.sort((a, b) => a.daysUntilEmpty - b.daysUntilEmpty);
+    // Sort anomalies last or daysUntilEmpty asc
+    results.sort((a, b) => {
+       if (a.hasAnomaly && !b.hasAnomaly) return 1;
+       if (!a.hasAnomaly && b.hasAnomaly) return -1;
+       return a.daysUntilEmpty - b.daysUntilEmpty;
+    });
 
     return {
        dNewest, dOldest, daysDiff,
@@ -199,19 +240,24 @@ export default function InventaireIntelligent() {
 
                   <div className="flex items-center justify-between">
                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className={`w-8 h-8 rounded border flex items-center justify-center shrink-0 ${s.isRisk ? 'bg-red-50 border-red-100 text-red-500' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
-                           <Package size={14} />
+                        <div className={`w-8 h-8 rounded border flex items-center justify-center shrink-0 ${s.isRisk ? 'bg-red-50 border-red-100 text-red-500' : s.hasAnomaly ? 'bg-blue-50 border-blue-100 text-blue-500' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                           {s.hasAnomaly ? <AlertTriangle size={14} /> : <Package size={14} />}
                         </div>
                         <div className="truncate">
                            <h4 className="font-black text-sm text-gray-800 truncate leading-none mb-1">{p.name}</h4>
                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                               <span>P: {s.stockOlder}</span>
-                               <span>A: <span className="text-crousty-purple">{s.stockNewer}</span></span>
+                               <span title="Dernier Inventaire connu">P: {s.stockOlder}</span>
+                               <span title="Inventaire actuel">A: <span className="text-crousty-purple">{s.stockNewer}</span></span>
+                               <span className="opacity-50">({s.primaryUnit === 'carton' ? 'Cart.' : 'U.'})</span>
                            </div>
                         </div>
                      </div>
                      <div className="text-right shrink-0">
-                        {s.daysUntilEmpty > 90 ? (
+                        {s.hasAnomaly ? (
+                           <div className="font-black uppercase text-[9px] px-2 py-1 rounded border bg-blue-50 text-blue-600 border-blue-100" title="Une anomalie de stock ou de saisie a été détectée.">
+                              ANOMALIE
+                           </div>
+                        ) : s.daysUntilEmpty > 90 ? (
                            <span className="text-emerald-500 font-black text-[10px] uppercase tracking-wider">Sécurisé</span>
                         ) : (
                            <div className={`font-black uppercase text-[10px] px-2 py-1 rounded border ${s.isRisk ? 'bg-red-50 text-red-600 border-red-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
@@ -252,7 +298,16 @@ export default function InventaireIntelligent() {
               </div>
 
               <div className="p-4 sm:p-6 space-y-6 bg-gray-50/50">
-                {selectedProductStat.isRisk && (
+                {selectedProductStat.hasAnomaly && (
+                   <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl flex items-start gap-3">
+                      <AlertTriangle className="text-blue-500 shrink-0 mt-0.5" size={18} />
+                      <div>
+                         <div className="text-sm font-black text-blue-800">Incohérence des stocks</div>
+                         <div className="text-xs text-blue-600 font-medium">L'Inventaire final est supérieur aux prévisions (recomptage, livraison non saisie). La consommation a été ignorée pour cette période.</div>
+                      </div>
+                   </div>
+                )}
+                {selectedProductStat.isRisk && !selectedProductStat.hasAnomaly && (
                    <div className="bg-red-50 border border-red-200 p-3 rounded-xl flex items-start gap-3">
                       <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
                       <div>
@@ -265,22 +320,22 @@ export default function InventaireIntelligent() {
                 <div className="grid grid-cols-2 gap-3">
                    <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
                       <div className="text-[10px] text-orange-600/80 uppercase font-bold tracking-widest mb-1">Stock Précédent</div>
-                      <div className="font-black text-orange-900 text-2xl">{selectedProductStat.stockOlder} <span className="text-sm font-medium text-orange-700/50">u.</span></div>
+                      <div className="font-black text-orange-900 text-2xl">{selectedProductStat.stockOlder} <span className="text-sm font-medium text-orange-700/50">{selectedProductStat.primaryUnit === 'carton' ? 'cartons' : 'u.'}</span></div>
                    </div>
                    <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm">
                       <div className="text-[10px] text-blue-600/80 uppercase font-bold tracking-widest mb-1">+ Livraisons</div>
-                      <div className="font-black text-blue-900 text-2xl">{selectedProductStat.delivered} <span className="text-sm font-medium text-blue-700/50">u.</span></div>
+                      <div className="font-black text-blue-900 text-2xl">{selectedProductStat.delivered} <span className="text-sm font-medium text-blue-700/50">{selectedProductStat.primaryUnit === 'carton' ? 'cartons' : 'u.'}</span></div>
                    </div>
                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-2 opacity-10">
                          <TrendingUp size={48} />
                       </div>
                       <div className="text-[10px] text-emerald-600/80 uppercase font-bold tracking-widest mb-1 relative z-10">- Stock Actuel</div>
-                      <div className="font-black text-emerald-900 text-2xl relative z-10">{selectedProductStat.stockNewer} <span className="text-sm font-medium text-emerald-700/50">u.</span></div>
+                      <div className="font-black text-emerald-900 text-2xl relative z-10">{selectedProductStat.stockNewer} <span className="text-sm font-medium text-emerald-700/50">{selectedProductStat.primaryUnit === 'carton' ? 'cartons' : 'u.'}</span></div>
                    </div>
                    <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm">
                       <div className="text-[10px] text-indigo-600/80 uppercase font-bold tracking-widest mb-1">= Total Consommé</div>
-                      <div className="font-black text-indigo-900 text-2xl">{selectedProductStat.consumption} <span className="text-sm font-medium text-indigo-700/50">u.</span></div>
+                      <div className="font-black text-indigo-900 text-2xl">{selectedProductStat.consumption} <span className="text-sm font-medium text-indigo-700/50">{selectedProductStat.primaryUnit === 'carton' ? 'cartons' : 'u.'}</span></div>
                    </div>
                 </div>
 
@@ -292,7 +347,7 @@ export default function InventaireIntelligent() {
                         </div>
                         <div>
                            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Conso Moyenne</div>
-                           <div className="font-black text-gray-800 text-lg">{selectedProductStat.avgPerDay.toFixed(1)} <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">u. / jour</span></div>
+                           <div className="font-black text-gray-800 text-lg">{(!selectedProductStat.hasAnomaly || selectedProductStat.avgPerDay > 0) ? selectedProductStat.avgPerDay : '---'} <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{selectedProductStat.primaryUnit === 'carton' ? 'crt.' : 'u.'} / jour</span></div>
                         </div>
                      </div>
                   </div>
@@ -301,7 +356,9 @@ export default function InventaireIntelligent() {
                      <div className="text-[11px] text-gray-500 font-bold flex items-center gap-1.5 uppercase tracking-widest">
                         <Clock size={14} className="text-gray-400"/> Temps avant rupture
                      </div>
-                     {selectedProductStat.daysUntilEmpty > 90 ? (
+                     {selectedProductStat.hasAnomaly ? (
+                        <span className="text-gray-400 font-black text-sm uppercase tracking-wider">Inconnu</span>
+                     ) : selectedProductStat.daysUntilEmpty > 90 ? (
                         <span className="text-emerald-500 font-black text-sm uppercase tracking-wider">Sécurisé</span>
                      ) : (
                         <span className={`font-black tracking-wider uppercase text-sm px-3 py-1 rounded-xl shadow-sm border ${selectedProductStat.isRisk ? 'bg-red-500 text-white border-red-600' : 'bg-orange-100 text-orange-800 border-orange-200'}`}>

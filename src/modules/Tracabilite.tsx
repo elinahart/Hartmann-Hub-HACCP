@@ -258,22 +258,38 @@ export default function Tracabilite() {
               <Camera size={16} className="text-gray-500" /> Photo de l'étiquette / du produit <span className="text-red-500">*</span>
             </Label>
             {!photoDataUrl ? (
-              <div className="relative group">
-                <input 
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleCapture}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                <div className="w-full h-40 flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-200 bg-gray-50 rounded-[2rem] group-hover:border-crousty-purple group-hover:bg-crousty-purple/5 transition-all">
-                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-crousty-purple">
-                    <Camera size={24} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative group">
+                  <input 
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleCapture}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="w-full h-32 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 bg-gray-50 rounded-2xl group-hover:border-crousty-purple group-hover:bg-crousty-purple/5 transition-all">
+                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-crousty-purple">
+                      <Camera size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 text-center">Appareil Photo</span>
                   </div>
-                  <div className="text-center">
-                    <span className="text-gray-900 font-black block">Prendre la photo</span>
-                    <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Obligatoire pour validation</span>
+                </div>
+                <div className="relative group">
+                  <input 
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCapture}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="w-full h-32 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 bg-gray-50 rounded-2xl group-hover:border-crousty-purple group-hover:bg-crousty-purple/5 transition-all">
+                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-crousty-purple">
+                      <ImageIcon size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 text-center">Galerie</span>
                   </div>
+                </div>
+                <div className="col-span-2 text-center mt-1">
+                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Photo obligatoire pour validation</span>
                 </div>
               </div>
             ) : (

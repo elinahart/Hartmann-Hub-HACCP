@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { getCouleurProfil } from '../lib/utils';
 import { MembreEquipe } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { renderAvatarIcon } from './AvatarCustomizerModal';
 
 interface Position { x: number; y: number; }
 
@@ -357,7 +358,9 @@ export function HoneycombWatch({ membres, onSelect, animateEnter = false }: Hone
       }}
     >
       {membres.map((m, i) => {
-        const couleur = getCouleurProfil(m.name, m.role);
+        const isPhoto = (m.avatarType === 'photo' && m.avatarUrl) || (!m.avatarType && m.avatarUrl);
+        const isIcon = m.avatarType === 'icon';
+        const couleur = isPhoto ? 'transparent' : (m.avatarColor || getCouleurProfil(m.name, m.role));
 
         return (
           <div
@@ -386,6 +389,9 @@ export function HoneycombWatch({ membres, onSelect, animateEnter = false }: Hone
                 height: '100%', 
                 borderRadius: '50%',
                 background: couleur, 
+                backgroundImage: isPhoto ? `url(${m.avatarUrl})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 display: "flex", 
                 alignItems: "center", 
                 justifyContent: "center",
@@ -395,18 +401,24 @@ export function HoneycombWatch({ membres, onSelect, animateEnter = false }: Hone
               }}
             >
               {/* Initiales */}
-              <span
-                className="bubble-text"
-                style={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: `${TAILLE_BASE * 0.3}px`,
-                  pointerEvents: "none",
-                  lineHeight: 1
-                }}
-              >
-                {m.initiales || m.name.charAt(0).toUpperCase()}
-              </span>
+              {(!isPhoto && !isIcon) ? (
+                <span
+                  className="bubble-text"
+                  style={{
+                    color: "white",
+                    fontWeight: "bold",
+                    fontSize: `${TAILLE_BASE * 0.3}px`,
+                    pointerEvents: "none",
+                    lineHeight: 1
+                  }}
+                >
+                  {m.initiales || m.name.charAt(0).toUpperCase()}
+                </span>
+              ) : isIcon ? (
+                <div style={{ color: "white", pointerEvents: "none" }}>
+                  {renderAvatarIcon(m.avatarIcon, TAILLE_BASE * 0.4)}
+                </div>
+              ) : null}
 
               {/* Couronne Manager */}
               {m.role === "manager" && (

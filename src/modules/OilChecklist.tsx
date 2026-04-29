@@ -14,6 +14,7 @@ import imageCompression from 'browser-image-compression';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { useConfig } from '../contexts/ConfigContext';
 import { useManagerUI } from '../contexts/ManagerUIContext';
+import { compressPhotoTLC } from '../lib/imageUtils';
 
 /**
  * Module Photo & Saisie Manuelle

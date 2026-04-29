@@ -402,17 +402,30 @@ export default function Receptions() {
           <div className="pt-2">
             <Label className="mb-2 block">Bon de livraison (Photo optionnelle)</Label>
             {!photoDataUrl ? (
-              <div className="relative">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment" 
-                  onChange={handleCapture} 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                />
-                <Button variant="outline" className="w-full flex items-center justify-center gap-2 border-dashed py-6 bg-gray-50 hover:bg-crousty-pink/5 border-gray-300 hover:border-crousty-purple">
-                  <Camera size={24} className="text-gray-400" /> <span className="text-gray-500 font-bold">Prendre en photo le bon</span>
-                </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" 
+                    onChange={handleCapture} 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  />
+                  <Button variant="outline" className="w-full h-auto flex flex-col items-center justify-center gap-2 border-dashed py-4 bg-gray-50 hover:bg-crousty-pink/5 border-gray-300 hover:border-crousty-purple px-2">
+                    <Camera size={20} className="text-gray-400" /> <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Appareil Photo</span>
+                  </Button>
+                </div>
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleCapture} 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  />
+                  <Button variant="outline" className="w-full h-auto flex flex-col items-center justify-center gap-2 border-dashed py-4 bg-gray-50 hover:bg-crousty-pink/5 border-gray-300 hover:border-crousty-purple px-2">
+                    <ImageIcon size={20} className="text-gray-400" /> <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Galerie</span>
+                  </Button>
+                </div>
               </div>
             ) : (
                <div className="relative rounded-xl overflow-hidden border border-gray-200">

@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChefHat, Package, Thermometer, Flame, Sparkles, Tag, Droplet, ClipboardList, Archive, LogOut, Settings, ChevronLeft, ChevronRight, Home, X, Smartphone, QrCode, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
-import { getInitials } from '../lib/utils';
+import { getInitials, getCouleurProfil } from '../lib/utils';
+import { UserAvatar } from './UserAvatar';
 import { renderAvatarIcon } from './AvatarCustomizerModal';
 import { RestaurantLogo } from './ui/RestaurantLogo';
 import { useI18n } from '../lib/i18n';
@@ -121,26 +122,11 @@ export const Sidebar = ({ currentView, setCurrentView, setShowSettings, showSett
 
         <div className={`p-4 border-t border-gray-100 flex flex-col gap-2`}>
           <div className={`flex items-center ${isCollapsed && !isMobileOpen ? 'md:justify-center' : 'gap-3 px-4'} py-2 bg-gray-50 rounded-xl mb-2`}>
-            <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 bg-cover bg-center shadow-sm"
-              style={{
-                backgroundColor: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? 'transparent' : (currentUser?.avatarColor || 'var(--color-primary)'),
-                backgroundImage: (currentUser?.avatarType === 'photo' && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : (!currentUser?.avatarType && currentUser?.avatarUrl) ? `url(${currentUser.avatarUrl})` : 'none',
-                opacity: (!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 0.8 : 1,
-                color: (currentUser?.avatarColor) ? '#fff' : 'var(--color-primary)'
-              }}
-            >
-              {(!currentUser?.avatarUrl || currentUser?.avatarType !== 'photo') && (!currentUser?.avatarType || currentUser?.avatarType === 'monogram') && (
-                <span className={(!currentUser?.avatarColor && !currentUser?.avatarUrl) ? 'text-[var(--color-primary)]' : 'text-white'}>
-                  {currentUser ? getInitials(currentUser.name) : ''}
-                </span>
-              )}
-              {currentUser?.avatarType === 'icon' && (
-                <div className="flex items-center justify-center text-white" style={{color: (currentUser?.avatarColor) ? '#fff' : 'var(--color-primary)'}}>
-                  {renderAvatarIcon(currentUser.avatarIcon, 16)}
-                </div>
-              )}
-            </div>
+            <UserAvatar 
+              user={currentUser} 
+              className="w-8 h-8 shadow-sm font-bold" 
+              iconSize={16} 
+            />
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex flex-col overflow-hidden">
                 <span className="text-sm font-bold text-gray-800 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{currentUser?.name}</span>

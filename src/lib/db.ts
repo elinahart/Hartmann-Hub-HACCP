@@ -90,13 +90,20 @@ export const getStoredData = <T>(key: string, defaultValue: T): T => {
 /**
  * Enregistre les données brutes (Local Storage)
  */
+let quotaAlertShown = false;
+
 export const setStoredData = <T>(key: string, value: T) => {
   try {
     const serialized = JSON.stringify(value);
     window.localStorage.setItem(key, serialized);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in setStoredData (Quota exceeded?):', error);
-    throw new Error('Impossible de sauvegarder les données localement (Stockage plein ?)');
+    if (!quotaAlertShown && (error.name === 'QuotaExceededError' || (error.message && error.message.toLowerCase().includes('quota')))) {
+      quotaAlertShown = true;
+      alert("⚠️ Espace de stockage plein ! L'application ne peut plus sauvegarder vos dernières saisies.\n\nVeuillez supprimer des anciennes archives dans les Paramètres > Stockage pour libérer de l'espace.");
+    }
+    // We do NOT throw an unhandled error here anymore so we don't brutally crash the app
+    // Components that absolutely need to know should wrap their setItem logic manually (like AuthContext).
   }
 };
 

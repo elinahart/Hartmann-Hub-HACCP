@@ -23,18 +23,60 @@ interface PhotoRecord {
   timestamp: number;
 }
 
+export interface SyncTask {
+  id: string;
+  type: 'export_session';
+  sessionId: string;
+  sessionName: string;
+  blob: Blob;
+  fileName: string;
+  status: 'pending' | 'failed' | 'processing';
+  error?: string;
+  retryCount: number;
+  timestamp: number;
+}
+
 class CroustyDB extends Dexie {
   photos!: Table<PhotoRecord>;
+  syncQueue!: Table<SyncTask>;
 
   constructor() {
     super('crousty-hub-v2');
     this.version(1).stores({
       photos: 'id, timestamp'
     });
+    this.version(2).stores({
+      photos: 'id, timestamp',
+      syncQueue: 'id, status, type, timestamp'
+    });
   }
 }
 
 export const db = new CroustyDB();
+
+export const queueSyncTask = async (task: Omit<SyncTask, 'id' | 'timestamp' | 'status' | 'retryCount'>) => {
+  const newTask: SyncTask = {
+    ...task,
+    id: crypto.randomUUID(),
+    status: 'pending',
+    retryCount: 0,
+    timestamp: Date.now()
+  };
+  await db.syncQueue.put(newTask);
+  return newTask;
+};
+
+export const getPendingSyncTasks = async () => {
+  return await db.syncQueue.where('status').anyOf('pending', 'failed').sortBy('timestamp');
+};
+
+export const updateSyncTask = async (id: string, updates: Partial<SyncTask>) => {
+  await db.syncQueue.update(id, updates);
+};
+
+export const deleteSyncTask = async (id: string) => {
+  await db.syncQueue.delete(id);
+};
 
 /**
  * Sauvegarde une photo (DataURL) dans IndexedDB via Dexie

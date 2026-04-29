@@ -38,6 +38,7 @@ import { MobileCollectionApp } from './components/mobile/MobileCollectionApp';
 import { MobileSyncModal } from './components/mobile/MobileSyncModal';
 import { usePersistentStorage } from './hooks/usePersistentStorage';
 import { ManagerUIProvider } from './contexts/ManagerUIContext';
+import { SyncIndicator } from './components/SyncIndicator';
 
 import { useI18n } from './lib/i18n';
 
@@ -383,6 +384,7 @@ export default function App() {
             localStorage.removeItem('crousty_mobile_session');
             setMobileModeData(null);
          }} />
+         <SyncIndicator />
        </ManagerUIProvider>
      );
   }
@@ -742,6 +744,7 @@ export default function App() {
       {isCustomizationModalOpen && (
         <CustomizationModal initialTab={customizationInitialTab} onClose={() => setIsCustomizationModalOpen(false)} />
       )}
+      <SyncIndicator />
     </div>
     </div>
     </ManagerUIProvider>

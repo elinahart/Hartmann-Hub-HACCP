@@ -1,11 +1,21 @@
 export const APP_NAME = "Hartmann Hub";
-export const APP_VERSION = "2.5.4";
+export const APP_VERSION = "2.5.5";
 export const APP_AUTHOR = "Elina Hartmann";
 export const APP_CONTACT = "elina.hartmann.pro@gmail.com";
 export const APP_DESCRIPTION = "Solution complète de gestion HACCP, traçabilité et pilotage opérationnel professionnel.";
 export const APP_LAST_UPDATE = "29 Avril 2026";
 
 export const APP_CHANGELOG = [
+  {
+    version: "2.5.5",
+    date: "29 Avril 2026",
+    changes: [
+      "Introduction de la synchronisation hors-ligne pour l'application Mobile",
+      "Sauvegarde persistante cryptée des données si une perte de réseau survient",
+      "Mécanisme de renvoi automatique (retry) qui s'exécute en arrière-plan lorsque la connexion revient",
+      "Affichage clair des statuts de synchronisation pour s'assurer qu'aucune donnée n'est perdue"
+    ]
+  },
   {
     version: "2.5.4",
     date: "29 Avril 2026",

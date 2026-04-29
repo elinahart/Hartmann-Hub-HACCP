@@ -205,39 +205,35 @@ export const MobileCollectionApp = ({ session, onExit }: { session: any, onExit:
     setIsExporting(true);
     setExportDone(false);
     try {
-       const blob = await generateZip();
-       const fileName = `collecte-${session.name?.replace(/\s+/g, '-') || 'donnees'}.zip`;
-       const file = new File([blob], fileName, { type: 'application/zip' });
-
-       const formData = new FormData();
-       formData.append('file', file);
+       const { queueSyncTask } = await import('../../lib/db');
+       const { processSyncQueue } = await import('../../lib/syncEngine');
        
-       const response = await fetch(`/api/sessions/${session.sid}/upload`, {
-         method: 'POST',
-         body: formData,
+       const blob = await generateZip();
+       const fileName = `collecte-${session.name?.replace(/\s+/g, '-') || 'donnees'}-${Date.now()}.zip`;
+       
+       // Offline-first: Push to queue instead of sending directly
+       await queueSyncTask({
+           type: 'export_session',
+           sessionId: session.sid,
+           sessionName: session.name,
+           blob,
+           fileName
        });
 
-       const isHtml = response.headers.get('content-type')?.includes('text/html');
-       if (response.status === 404 || isHtml) throw new Error("API_OFFLINE");
-       if (!response.ok) throw new Error(`Erreur serveur (${response.status})`);
-       
-       const result = await response.json();
-       if (!result.success) throw new Error(result.error || "L'envoi a échoué.");
-       
        setExportDone(true);
-       alert("Données envoyées avec succès vers l'iPad !\n\nL'appareil va être réinitialisé et la session fermée.");
+       alert("Données enregistrées ! L'envoi se fera automatiquement en arrière-plan.\n\nL'appareil va être réinitialisé et la session fermée.");
        
        await clearAllData();
        localStorage.removeItem('crousty_mobile_worker');
        localStorage.removeItem(`crousty_mobile_config_synced_${session.sid}`);
-       onExit();
        
+       // Trigger sync engine processing right away
+       processSyncQueue();
+       
+       onExit();
     } catch (err: any) {
-       if (err.message === "API_OFFLINE" || String(err).includes("Unexpected token")) {
-           alert("Erreur de connexion : Le serveur n'est pas joignable ou les fonctions serveur ne sont pas activées. Si vous êtes sur Netlify, assurez-vous de déployer `netlify/functions/api.ts` et d'activer Netlify Blobs. \n\nVeuillez utiliser le bouton 'Télécharger manuellement (ZIP)' puis envoyer le fichier au Hub (iPad).");
-       } else {
-           alert("Erreur lors de l'export: " + err.message);
-       }
+       console.error(err);
+       alert("Erreur critique lors de la préparation des données : " + err.message);
     } finally {
        setIsExporting(false);
     }
